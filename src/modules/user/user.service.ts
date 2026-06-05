@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { Account } from '../auth/entities/account.entity';
+import { SoProfile } from '../so/entities/so-profile.entity';
+import { LocationService } from '../location/location.service';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    @InjectRepository(SoProfile)
+    private readonly soProfileRepository: Repository<SoProfile>,
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
+    private readonly locationService: LocationService,
   ) {}
 
   // ── Tìm account theo username (dùng cho auth) ─────────────
@@ -38,47 +40,52 @@ export class UserService {
     const savedAccount = await this.accountRepository.save(account);
 
     // 2. Tạo User profile liên kết với Account
-    const user = this.userRepository.create({
+    const soProfile = this.soProfileRepository.create({
       account: savedAccount,
     });
-    await this.userRepository.save(user);
+    await this.soProfileRepository.save(soProfile);
 
     return savedAccount;
   }
 
-  // ── Cập nhật thông tin cá nhân (User profile) ─────────────
-  async updateUserProfile(
-    userProfileDto: UserProfileDto,
-  ): Promise<User | null> {
+  // ── Cập nhật thông tin cá nhân (SO profile) ─────────────
+  async updateUserProfile(dto: UserProfileDto): Promise<SoProfile | null> {
     // Tìm user qua account
-    const account = await this.accountRepository.findOne({
-      where: { username: userProfileDto.username },
-      relations: { user: true },
-    });
+    const account = await this.findAccountByUsername(dto.username);
 
-    if (!account?.user) return null;
+    if (!account) return null;
 
-    const user = account.user;
-    user.fullName = userProfileDto.fullName;
-    user.dateOfBirth = userProfileDto.dateOfBirth;
-    user.gender = userProfileDto.gender;
-    user.title = userProfileDto.title;
-    user.provinceId = userProfileDto.provinceId;
-    user.districtId = userProfileDto.districtId;
-    user.address = userProfileDto.address;
-    user.avatarUrl = userProfileDto.avatarUrl;
-    const newUser = this.userRepository.create(user);
-    return await this.userRepository.save(newUser);
+    let soProfile = account.soProfile;
+
+    if (!soProfile) {
+      soProfile = this.soProfileRepository.create({ accountId: account.id });
+    }
+    // Cập nhật email trên soProfile
+    if (dto.email) soProfile.email = dto.email;
+    if (dto.fullName) soProfile.fullName = dto.fullName;
+    if (dto.dateOfBirth) soProfile.dateOfBirth = dto.dateOfBirth;
+    if (dto.gender) soProfile.gender = dto.gender;
+    if (dto.title) soProfile.title = dto.title;
+    if (dto.address) soProfile.address = dto.address;
+    if (dto.avatarUrl) soProfile.avatarUrl = dto.avatarUrl;
+    // Tìm province và ward theo tên
+    if (dto.province) {
+      const province = await this.locationService.getProvinceByName(
+        dto.province,
+      );
+      soProfile.provinceId = province?.id ?? null;
+    }
+    if (dto.ward) {
+      const ward = await this.locationService.getWardByName(dto.ward);
+      soProfile.wardId = ward?.id ?? null;
+    }
+
+    return this.soProfileRepository.save(soProfile);
   }
 
-  async getUserProfile(username: string) {
-    const account = await this.accountRepository.findOne({
-      where: { username },
-      relations: { user: true },
-    });
-    console.log('account=', account);
-    if (!account?.user) return null;
-    const user = account.user;
-    return { ...user };
+  async getUserProfile(username: string): Promise<SoProfile | null> {
+    const account = await this.findAccountByUsername(username);
+    if (!account?.soProfile) return null;
+    return account.soProfile;
   }
 }

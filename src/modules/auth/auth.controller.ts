@@ -4,6 +4,8 @@ import { LoginDTO, RegisterDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { ResetPasswordDTO } from './dto/auth.dto';
 
+import { AccountRole } from './entities/account.entity';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -13,7 +15,11 @@ export class AuthController {
   }
   @Post('registerDemo')
   async registerDemo() {
-    return await this.authService.registerDemo('admin', 'Admin@123', 'So');
+    return await this.authService.registerDemo(
+      'admin',
+      'Admin@123',
+      AccountRole.SO,
+    );
   }
   @Post('register')
   async register(@Body() registerDto: RegisterDTO) {
