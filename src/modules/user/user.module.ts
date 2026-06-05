@@ -1,15 +1,24 @@
 import { Module } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { User } from './entities/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from '../auth/entities/account.entity';
 import { OtpCode } from './entities/otp-code.entity';
 import { EmailChangeRequest } from './entities/email-change-request.entity';
+import { SoProfile } from '../so/entities/so-profile.entity';
+import { LocationModule } from '../location/location.module';
+import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Account, OtpCode, EmailChangeRequest]),
+    TypeOrmModule.forFeature([
+      SoProfile,
+      DoanhNghiepProfile,
+      Account,
+      OtpCode,
+      EmailChangeRequest,
+    ]),
+    LocationModule,
   ],
   controllers: [UserController],
   providers: [UserService],

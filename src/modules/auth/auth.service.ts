@@ -7,7 +7,9 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
-import { Account } from './entities/account.entity';
+import { Account, AccountRole } from './entities/account.entity';
+import { SoProfile } from '../so/entities/so-profile.entity';
+import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +18,10 @@ export class AuthService {
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     @InjectRepository(Account)
     private readonly accountRepo: Repository<Account>,
+    @InjectRepository(SoProfile)
+    private readonly soProfileRepo: Repository<SoProfile>,
+    @InjectRepository(DoanhNghiepProfile)
+    private readonly doanhNghiepProfileRepo: Repository<DoanhNghiepProfile>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -52,13 +58,24 @@ export class AuthService {
     };
   }
 
-  async registerDemo(username: string, password: string, role: string) {
+  // Tạo tài khoản cho role Sở với Profile rỗng
+  async registerDemo(username: string, password: string, role: AccountRole) {
+    const existingAccount = await this.findAccountByUserName(username);
+    if (existingAccount) return { message: 'Tài khoản đã tồn tại' };
+    // Tạo account
     const account = this.accountRepo.create({
       username,
       password: await bcrypt.hash(password, 10),
       role,
     });
-    return await this.accountRepo.save(account);
+    const saveAccount = await this.accountRepo.save(account);
+    if (role == AccountRole.SO) {
+      const soProfile = this.soProfileRepo.create({
+        accountId: saveAccount.id,
+      });
+      await this.soProfileRepo.save(soProfile);
+    }
+    return saveAccount;
   }
 
   getOTPCode(): string {

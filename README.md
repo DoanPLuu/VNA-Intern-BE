@@ -96,5 +96,12 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
 # VNA-Intern-BE
+
 Intern project for VNA Group Co
+
+# Chạy file location.sql
+
+- Cách 1: Chạy lệnh psql -U postgres -d be_tt -f location.sql
+- Cách 2: Chạy lệnh & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d be_tt -f location.sql

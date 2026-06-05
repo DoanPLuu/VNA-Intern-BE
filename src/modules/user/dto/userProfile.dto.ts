@@ -2,51 +2,56 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsOptional, IsString, Matches } from 'class-validator';
 
 export class UserProfileDto {
-  @ApiProperty()
-  @IsOptional()
+  @ApiProperty({ example: 'admin' })
   @IsString()
   username: string;
 
-  @ApiProperty()
-  @Matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, {
-    message: 'Email phải có đuôi @gmail.com',
+  @ApiProperty({ example: 'admin@gmail.com' })
+  @IsOptional()
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: 'Email không đúng định dạng',
   })
-  email: string;
+  email?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Nguyễn Văn A' })
   @IsOptional()
   @IsString()
-  fullName: string;
+  fullName?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '1995-06-01' })
   @IsOptional()
   @IsDateString()
-  dateOfBirth: Date;
+  dateOfBirth?: Date;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Nam' })
   @IsOptional()
   @IsString()
-  gender: string;
+  gender?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Quản trị viên' })
   @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
-  @ApiProperty()
-  @IsOptional()
-  provinceId?: number | null;
-
-  @ApiProperty()
-  @IsOptional()
-  districtId?: number | null;
-
-  @ApiProperty()
+  // Truyền tên tỉnh (vd: "Tp Hồ Chí Minh") → service tự tìm id
+  @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsOptional()
   @IsString()
-  address: string;
+  province?: string;
 
-  @ApiProperty()
+  // Truyền tên phường/xã (vd: "Phường Bến Nghé") → service tự tìm id
+  @ApiProperty({ example: 'Phường Bến Nghé' })
   @IsOptional()
+  @IsString()
+  ward?: string;
+
+  @ApiProperty({ example: '123 Nguyễn Trãi' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   avatarUrl?: string | null;
 }
