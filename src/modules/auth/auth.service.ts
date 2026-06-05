@@ -1,24 +1,34 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { LoginDTO } from './dto/auth.dto';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import { Response } from 'src/common';
+import { MailService } from 'src/common/mail/mail.service';
+import { Repository } from 'typeorm';
+import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
+import { User } from '../user/entities/user.entity';
+import { UserService } from '../user/user.service';
+import { LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
+import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account } from './entities/account.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     @InjectRepository(Account)
     private readonly accountRepo: Repository<Account>,
+    @InjectRepository(OtpCode)
+    private readonly otpCodeRepo: Repository<OtpCode>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async findAccountByUserName(username: string): Promise<Account | null> {
@@ -127,5 +137,66 @@ export class AuthService {
       : unit === 'h'
         ? num * 3_600_000
         : num * 60_000;
+  }
+
+  async forgotPassword(dto: ForgotPasswordDTO) {
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (!user) {
+      return Response.errorNotFound('Không tìm thấy người dùng với email này');
+    }
+    const otp = this.getOTPCode();
+    const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 1);
+    const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);
+
+    await this.otpCodeRepo.save({
+      userId: user.id,
+      code: otp,
+      type: OtpType.FORGOT_PASSWORD,
+      isUsed: false,
+      expiresAt,
+    });
+    await this.mailService.sendForgotPasswordEmail(
+      dto.email,
+      user.account?.username ?? dto.email,
+      otp,
+      otpExpiresMinutes,
+    );
+    return Response.success(null, 'gửi email thành công');
+  }
+
+  async resetPassword(dto: ResetPasswordDTO) {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw Response.errorBad('xác nhận mật khẩu không khớp');
+    }
+    const user = await this.userRepo.findOne({
+      where: { email: dto.email },
+      relations: { account: true },
+    });
+    if (!user || !user.account) {
+      throw Response.errorNotFound('email chưa đăng ký trên hệ thống');
+    }
+    const otpRecord = await this.otpCodeRepo.findOne({
+      where: {
+        userId: user.id,
+        code: dto.otp,
+        type: OtpType.FORGOT_PASSWORD,
+        isUsed: false,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+    if (!otpRecord) {
+      throw Response.errorBad('mã otp không đúng');
+    }
+    if (otpRecord.expiresAt.getTime() < Date.now()) {
+      throw Response.errorBad('mã otp đã hết hạn');
+    }
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    user.account.password = passwordHash;
+    await this.accountRepo.save(user.account);
+    otpRecord.isUsed = true;
+    await this.otpCodeRepo.save(otpRecord);
+    return Response.success(null, 'khôi phục mật khẩu thành công');
   }
 }

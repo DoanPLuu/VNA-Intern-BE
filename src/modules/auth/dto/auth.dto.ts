@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
-
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  MinLength,
+  IsEmail,
+} from 'class-validator';
 export class LoginDTO {
   @ApiProperty()
   @IsOptional({ message: 'Username khong duoc de trong' })
@@ -58,4 +65,25 @@ export class ConfirmNewEmailDTO {
   @IsOptional({ message: 'Vui long nhap email moi' })
   @IsString({ message: 'Email phai la 1 chuoi' })
   email: string;
+}
+export class ResetPasswordDTO {
+  @ApiProperty()
+  @IsNotEmpty({ message: 'Vui lòng nhập email' })
+  @IsEmail({}, { message: 'vui lòng nhập đúng định dạng' })
+  email: string;
+
+  @ApiProperty()
+  @IsNotEmpty({ message: 'Vui lòng nhập mã otp' })
+  @Length(6, 6, { message: 'Mã OTP phải gồm 6 ký tự' })
+  otp: string;
+
+  @ApiProperty()
+  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu mới' })
+  @MinLength(8, { message: 'Mật khẩu mới phải có ít nhất 8 ký tự' })
+  newPassword: string;
+
+  @ApiProperty()
+  @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
+  @MinLength(8, { message: 'Xác nhận mật khẩu phải có ít nhất 8 ký tự' })
+  confirmPassword: string;
 }

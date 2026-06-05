@@ -10,6 +10,7 @@ import { User } from './user.entity';
 
 export enum OtpType {
   CHANGE_EMAIL = 'CHANGE_EMAIL',
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
 }
 
 @Entity('otp_codes')
