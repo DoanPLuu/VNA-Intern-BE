@@ -1,10 +1,22 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDTO, RegisterDTO } from './dto/auth.dto';
+import { ConfirmNewEmailDTO, LoginDTO, RegisterDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { ResetPasswordDTO } from './dto/auth.dto';
 
 import { AccountRole } from './entities/account.entity';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+
+interface JwtPayload {
+  sub: number;
+  username: string;
+  role: string;
+}
+
+interface AuthenticatedRequest extends Request {
+  user: JwtPayload;
+}
 
 @Controller('auth')
 export class AuthController {
@@ -35,5 +47,29 @@ export class AuthController {
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDTO) {
     return await this.authService.resetPassword(dto);
+  }
+
+  @Post('change-email/request')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đổi email bước 1 - gửi OTP qua email cũ' })
+  async requestChangeEmail(@Req() req: AuthenticatedRequest) {
+    return this.authService.requestChangeEmail(req.user.sub);
+  }
+
+  @Post('change-email/confirm')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đổi email bước 2 - xác thực otp + lưu email mới' })
+  async confirmChangeEmail(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: ConfirmNewEmailDTO,
+  ) {
+    console.log(req.user.sub);
+    return this.authService.confirmChangeEmail(
+      req.user.sub,
+      body.otp,
+      body.email,
+    );
   }
 }

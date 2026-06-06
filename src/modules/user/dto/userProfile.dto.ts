@@ -31,7 +31,12 @@ export class UserProfileDto {
   @ApiProperty({ example: 'Quản trị viên' })
   @IsOptional()
   @IsString()
-  title?: string;
+  chucdanh?: string;
+
+  @ApiProperty({ example: 'QUAN_TRI' })
+  @IsOptional()
+  @IsString()
+  vaitro?: string;
 
   // Truyền tên tỉnh (vd: "Tp Hồ Chí Minh") → service tự tìm id
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
@@ -39,8 +44,8 @@ export class UserProfileDto {
   @IsString()
   province?: string;
 
-  // Truyền tên phường/xã (vd: "Phường Bến Nghé") → service tự tìm id
-  @ApiProperty({ example: 'Phường Bến Nghé' })
+  // Truyền tên phường/xã (vd: "Phường Chợ Lớn") → service tự tìm id
+  @ApiProperty({ example: 'Phường Chợ Lớn' })
   @IsOptional()
   @IsString()
   ward?: string;
@@ -50,7 +55,11 @@ export class UserProfileDto {
   @IsString()
   address?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    example: 'https://example.com/avatar.jpg',
+    nullable: true,
+  })
   @IsOptional()
   @IsString()
   avatarUrl?: string | null;

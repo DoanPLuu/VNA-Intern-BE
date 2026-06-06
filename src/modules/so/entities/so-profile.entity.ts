@@ -39,7 +39,7 @@ export class SoProfile {
   gender: string;
 
   @Column({ length: 100, nullable: true })
-  title: string;
+  chucdanh: string;
 
   @Column({
     name: 'vai_tro',

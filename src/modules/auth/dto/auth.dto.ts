@@ -9,12 +9,12 @@ import {
   IsEmail,
 } from 'class-validator';
 export class LoginDTO {
-  @ApiProperty()
+  @ApiProperty({ example: 'admin' })
   @IsOptional({ message: 'Username khong duoc de trong' })
   @IsString({ message: 'Username phai la 1 chuoi' })
   username: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Admin@123' })
   @IsOptional({ message: 'Password khong duoc de trong' })
   @IsString({ message: 'Password phai la 1 chuoi' })
   password: string;
@@ -53,15 +53,13 @@ export class ChangePasswordDTO {
   newPassword: string;
 }
 
-export class VerifyOtpDTO {
-  @ApiProperty()
-  @IsOptional({ message: 'Vui long nhap ma otp' })
-  @Length(6, 6, { message: 'Ma OTP phai gom 6 ky tu' })
-  otp: string;
-}
-
 export class ConfirmNewEmailDTO {
-  @ApiProperty()
+  @ApiProperty({ example: '767155' })
+  @IsOptional()
+  @IsString()
+  otp: string;
+
+  @ApiProperty({ example: 'newEmail@gmail.com' })
   @IsOptional({ message: 'Vui long nhap email moi' })
   @IsString({ message: 'Email phai la 1 chuoi' })
   email: string;

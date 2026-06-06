@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { Account } from '../auth/entities/account.entity';
-import { SoProfile } from '../so/entities/so-profile.entity';
+import { SoProfile, SoVaiTro } from '../so/entities/so-profile.entity';
 import { LocationService } from '../location/location.service';
 
 @Injectable()
@@ -61,11 +61,16 @@ export class UserService {
       soProfile = this.soProfileRepository.create({ accountId: account.id });
     }
     // Cập nhật email trên soProfile
-    if (dto.email) soProfile.email = dto.email;
+    if (dto.email) {
+      // if (dto.email != soProfile.email && soProfile.email !== null) return null;
+      soProfile.email = dto.email;
+    }
+
     if (dto.fullName) soProfile.fullName = dto.fullName;
     if (dto.dateOfBirth) soProfile.dateOfBirth = dto.dateOfBirth;
     if (dto.gender) soProfile.gender = dto.gender;
-    if (dto.title) soProfile.title = dto.title;
+    if (dto.chucdanh) soProfile.chucdanh = dto.chucdanh;
+    if (dto.vaitro) soProfile.vaiTro = dto.vaitro as SoVaiTro;
     if (dto.address) soProfile.address = dto.address;
     if (dto.avatarUrl) soProfile.avatarUrl = dto.avatarUrl;
     // Tìm province và ward theo tên

@@ -23,7 +23,6 @@ import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profil
       DoanhNghiepProfile,
       OtpCode,
     ]),
-
     UserModule,
     JwtModule.register({}),
   ],

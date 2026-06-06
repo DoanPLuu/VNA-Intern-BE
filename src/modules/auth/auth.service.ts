@@ -244,4 +244,63 @@ export class AuthService {
     await this.otpCodeRepo.save(otpRecord);
     return Response.success(null, 'khôi phục mật khẩu thành công');
   }
+
+  async requestChangeEmail(accountId: number) {
+    const soProfile = await this.soProfileRepo.findOne({
+      where: { accountId },
+      relations: { account: true },
+    });
+    if (!soProfile?.email) {
+      return Response.errorBad('Tai khoan chua co email de xac thuc');
+    }
+    await this.otpCodeRepo.update(
+      { accountId, type: OtpType.CHANGE_EMAIL, isUsed: false },
+      { isUsed: true },
+    );
+
+    const otpCode = this.getOTPCode();
+    const expiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 1);
+    await this.otpCodeRepo.save(
+      this.otpCodeRepo.create({
+        accountId,
+        code: otpCode,
+        type: OtpType.CHANGE_EMAIL,
+        expiresAt: new Date(Date.now() + expiresMinutes * 60 * 1000),
+      }),
+    );
+    await this.mailService.sendChangeEmailOtp(
+      soProfile.email,
+      soProfile.fullName ?? soProfile.account.username,
+      otpCode,
+    );
+    return { message: 'Da gui ma OTP den email hien tai' };
+  }
+
+  async confirmChangeEmail(accountId: number, otp: string, newEmail: string) {
+    console.log('=== confirmChangeEmail ===');
+    console.log('accountId:', accountId);
+    console.log('otp:', otp);
+    console.log('newEmail:', newEmail);
+    const otpRecord = await this.otpCodeRepo.findOne({
+      where: {
+        accountId,
+        code: otp,
+        type: OtpType.CHANGE_EMAIL,
+        isUsed: false,
+      },
+    });
+    if (!otpRecord) return Response.errorBad('Mã OTP không hợp lệ');
+    if (otpRecord.expiresAt < new Date()) {
+      return Response.errorBad('Mã OTP hết hạn');
+    }
+    const emailExists = await this.soProfileRepo.findOne({
+      where: { email: newEmail },
+    });
+    if (emailExists && emailExists.accountId != accountId)
+      return Response.errorBad('Email này đã được đăng ký bởi tài khoản khác');
+    otpRecord.isUsed = true;
+    await this.otpCodeRepo.save(otpRecord);
+    await this.soProfileRepo.update({ accountId }, { email: newEmail });
+    return Response.success(null, 'Thay đổi email thành công');
+  }
 }
