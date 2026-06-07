@@ -1,6 +1,11 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ConfirmNewEmailDTO, LoginDTO, RegisterDTO } from './dto/auth.dto';
+import {
+  ChangePasswordDTO,
+  ConfirmNewEmailDTO,
+  LoginDTO,
+  RegisterDTO,
+} from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { ResetPasswordDTO } from './dto/auth.dto';
 
@@ -47,6 +52,15 @@ export class AuthController {
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDTO) {
     return await this.authService.resetPassword(dto);
+  }
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDTO,
+  ) {
+    return await this.authService.changePassword(req.user.sub, dto);
   }
 
   @Post('change-email/request')

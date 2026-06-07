@@ -17,12 +17,10 @@ export class UserService {
     private readonly locationService: LocationService,
   ) {}
 
-  // ── Tìm account theo username (dùng cho auth) ─────────────
   async findAccountByUsername(username: string): Promise<Account | null> {
     return await this.accountRepository.findOne({ where: { username } });
   }
 
-  // ── Tạo account + user profile cùng lúc ──────────────────
   async createUserAccount(
     username: string,
     password: string,
@@ -32,7 +30,7 @@ export class UserService {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // 1. Tạo Account trước
+    // 1. Tạo Account
     const account = this.accountRepository.create({
       username,
       password: passwordHash,
@@ -50,7 +48,6 @@ export class UserService {
 
   // ── Cập nhật thông tin cá nhân (SO profile) ─────────────
   async updateUserProfile(dto: UserProfileDto): Promise<SoProfile | null> {
-    // Tìm user qua account
     const account = await this.findAccountByUsername(dto.username);
 
     if (!account) return null;
@@ -62,7 +59,7 @@ export class UserService {
     }
     // Cập nhật email trên soProfile
     if (dto.email) {
-      // if (dto.email != soProfile.email && soProfile.email !== null) return null;
+      if (dto.email != soProfile.email && soProfile.email !== null) return null;
       soProfile.email = dto.email;
     }
 

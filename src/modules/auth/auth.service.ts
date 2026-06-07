@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
 import { UserService } from '../user/user.service';
-import { LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
+import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 
 import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
@@ -107,11 +107,11 @@ export class AuthService {
   }
 
   private async generateTokens(
-    account: Account, // ← đổi từ User sang Account
+    account: Account,
     rememberMe: boolean,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload: Record<string, unknown> = {
-      sub: account.id, // number (account_id)
+      sub: account.id,
       username: account.username,
       role: account.role,
     };
@@ -136,7 +136,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + refreshMs);
 
     await this.refreshTokenRepo.save({
-      accountId: account.id, // ← dùng accountId thay vì userId
+      accountId: account.id,
       tokenHash,
       isRememberMe: rememberMe,
       expiresAt,
@@ -244,6 +244,23 @@ export class AuthService {
     await this.otpCodeRepo.save(otpRecord);
     return Response.success(null, 'khôi phục mật khẩu thành công');
   }
+  async changePassword(accountId: number, dto: ChangePasswordDTO) {
+    const account = await this.accountRepo.findOne({
+      where: { id: accountId },
+    });
+    if (!account) return Response.errorNotFound('Tài khoản không tồn tại');
+
+    const isMatch = await bcrypt.compare(dto.password, account.password);
+    if (!isMatch) return Response.errorBad('Mật khẩu hiện tại không khớp');
+
+    if (dto.newPassword !== dto.confirmPassword)
+      return Response.errorBad('Xác nhận mật khẩu không khớp');
+
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+    account.password = newPasswordHash;
+    await this.accountRepo.save(account);
+    return Response.success('Đổi mật khẩu thành công');
+  }
 
   async requestChangeEmail(accountId: number) {
     const soProfile = await this.soProfileRepo.findOne({
@@ -290,7 +307,7 @@ export class AuthService {
       },
     });
     if (!otpRecord) return Response.errorBad('Mã OTP không hợp lệ');
-    if (otpRecord.expiresAt < new Date()) {
+    if (otpRecord.expiresAt.getTime() < Date.now()) {
       return Response.errorBad('Mã OTP hết hạn');
     }
     const emailExists = await this.soProfileRepo.findOne({

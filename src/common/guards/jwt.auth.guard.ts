@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Request } from 'express';
 
-// Mở rộng Request của Express để thêm thuộc tính user
 interface JwtPayload {
   sub: number;
   username: string;

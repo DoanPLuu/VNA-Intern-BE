@@ -11,10 +11,7 @@ import { LocationModule } from './modules/location/location.module';
   imports: [
     UserModule,
     AuthModule,
-    // Config toàn cục
     ConfigModule.forRoot({ isGlobal: true }),
-
-    // TypeORM + PostgreSQL
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

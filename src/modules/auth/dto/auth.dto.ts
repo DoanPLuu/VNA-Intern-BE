@@ -43,16 +43,6 @@ export class RefreshTokenDTO {
   refreshToken: string;
 }
 
-export class ChangePasswordDTO {
-  @ApiProperty()
-  @IsOptional({ message: 'Vui long nhap mat khau cu' })
-  oldPassword: string;
-
-  @ApiProperty()
-  @IsOptional({ message: 'Vui long nhap mat khau moi' })
-  newPassword: string;
-}
-
 export class ConfirmNewEmailDTO {
   @ApiProperty({ example: '767155' })
   @IsOptional()
@@ -81,6 +71,22 @@ export class ResetPasswordDTO {
   newPassword: string;
 
   @ApiProperty()
+  @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
+  @MinLength(8, { message: 'Xác nhận mật khẩu phải có ít nhất 8 ký tự' })
+  confirmPassword: string;
+}
+export class ChangePasswordDTO {
+  @ApiProperty({ example: 'Admin@123' })
+  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu hiện tại' })
+  @IsString({ message: 'Mật khẩu không hợp lệ' })
+  password: string;
+
+  @ApiProperty({ example: 'Admin@456' })
+  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu mới' })
+  @MinLength(8, { message: 'Mật khẩu mới phải có ít nhất 8 ký tự' })
+  newPassword: string;
+
+  @ApiProperty({ example: 'Admin@456' })
   @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
   @MinLength(8, { message: 'Xác nhận mật khẩu phải có ít nhất 8 ký tự' })
   confirmPassword: string;

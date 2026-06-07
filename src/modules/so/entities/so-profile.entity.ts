@@ -49,7 +49,6 @@ export class SoProfile {
   })
   vaiTro: SoVaiTro;
 
-  // Mô hình 2 cấp: chỉ có province + ward (không có district)
   @Column({ name: 'province_id', type: 'int', nullable: true })
   provinceId: number | null;
 
