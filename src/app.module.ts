@@ -28,11 +28,8 @@ import { CompanyModule } from './modules/company/company.module';
       }),
       inject: [ConfigService],
     }),
-
     LocationModule,
-
     RoleModule,
-
     CompanyModule,
   ],
   controllers: [AppController],

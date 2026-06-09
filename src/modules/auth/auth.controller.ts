@@ -9,7 +9,7 @@ import {
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { ResetPasswordDTO } from './dto/auth.dto';
 
-import { AccountRole } from './entities/account.entity';
+import { AccountType } from './entities/account.entity';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 
@@ -35,7 +35,7 @@ export class AuthController {
     return await this.authService.registerDemo(
       'admin',
       'Admin@123',
-      AccountRole.SO,
+      AccountType.SO,
     );
   }
   @Post('register')
