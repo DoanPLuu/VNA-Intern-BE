@@ -6,6 +6,13 @@ import { GlobalExceptionFilter } from './common/filters/service.error.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  app.enableCors({
+    origin: 'http://localhost:3000', // Cho phép Frontend cổng 3000 gọi sang
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
