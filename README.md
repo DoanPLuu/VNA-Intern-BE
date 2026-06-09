@@ -105,3 +105,10 @@ Intern project for VNA Group Co
 
 - Cách 1: Chạy lệnh psql -U postgres -d be_tt -f location.sql
 - Cách 2: Chạy lệnh & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d be_tt -f location.sql
+
+# Tạo App Password Gmail (bắt buộc, không dùng mật khẩu thường được):
+
+1. Vào [myaccount.google.com](https://myaccount.google.com/) → Bảo mật
+2. Bật Xác minh 2 bước nếu chưa bật
+3. Tìm Mật khẩu ứng dụng → Tạo mới → đặt tên be_project
+4. Copy mật khẩu 16 ký tự vào MAIL_PASSWORD trong file .env

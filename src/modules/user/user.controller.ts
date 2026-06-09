@@ -19,7 +19,7 @@ export class UserController {
     return result;
   }
   @Get('profile/:username')
-  async getUserProfile(@Param('username') username: string) {
-    return this.userService.getUserProfile(username);
+  async getUserProfileDetail(@Param('username') username: string) {
+    return this.userService.getUserProfileDetail(username);
   }
 }

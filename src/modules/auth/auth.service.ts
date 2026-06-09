@@ -11,10 +11,7 @@ import { RefreshToken } from '../user/entities/refresh-token.entity';
 import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
-
-import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
-import { SoProfile } from '../so/entities/so-profile.entity';
-import { Account, AccountRole } from './entities/account.entity';
+import { Account, AccountType } from './entities/account.entity';
 
 @Injectable()
 export class AuthService {
@@ -27,10 +24,6 @@ export class AuthService {
     @InjectRepository(OtpCode)
     private readonly otpCodeRepo: Repository<OtpCode>,
 
-    @InjectRepository(SoProfile)
-    private readonly soProfileRepo: Repository<SoProfile>,
-    @InjectRepository(DoanhNghiepProfile)
-    private readonly doanhNghiepProfileRepo: Repository<DoanhNghiepProfile>,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -69,22 +62,20 @@ export class AuthService {
   }
 
   // Tạo tài khoản cho role Sở với Profile rỗng
-  async registerDemo(username: string, password: string, role: AccountRole) {
+  async registerDemo(
+    username: string,
+    password: string,
+    accountType: AccountType,
+  ) {
     const existingAccount = await this.findAccountByUserName(username);
     if (existingAccount) return { message: 'Tài khoản đã tồn tại' };
     // Tạo account
     const account = this.accountRepo.create({
       username,
       password: await bcrypt.hash(password, 10),
-      role,
+      accountType,
     });
     const saveAccount = await this.accountRepo.save(account);
-    if (role == AccountRole.SO) {
-      const soProfile = this.soProfileRepo.create({
-        accountId: saveAccount.id,
-      });
-      await this.soProfileRepo.save(soProfile);
-    }
     return saveAccount;
   }
 
@@ -155,39 +146,12 @@ export class AuthService {
         ? num * 3_600_000
         : num * 60_000;
   }
-  private async findAccountProfileByEmail(email: string): Promise<{
-    account: Account;
-    username: string;
-    email: string;
-  } | null> {
-    const soProfile = await this.soProfileRepo.findOne({
-      where: { email },
-      relations: { account: true },
-    });
-    if (soProfile?.account) {
-      return {
-        account: soProfile.account,
-        username: soProfile.account.username,
-        email: soProfile.email,
-      };
-    }
-    const doanhNghiepProfile = await this.doanhNghiepProfileRepo.findOne({
-      where: { email },
-      relations: { account: true },
-    });
-    if (doanhNghiepProfile?.account) {
-      return {
-        account: doanhNghiepProfile.account,
-        username: doanhNghiepProfile.account.username,
-        email: doanhNghiepProfile.email,
-      };
-    }
-    return null;
-  }
 
   async forgotPassword(dto: ForgotPasswordDTO) {
-    const profile = await this.findAccountProfileByEmail(dto.email);
-    if (!profile) {
+    const account = await this.accountRepo.findOne({
+      where: { email: dto.email },
+    });
+    if (!account) {
       throw Response.errorNotFound('Không tìm thấy người dùng với email này');
     }
     const otp = this.getOTPCode();
@@ -195,8 +159,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);
 
     await this.otpCodeRepo.save({
-      accountId: profile.account.id,
-      email: profile.email,
+      accountId: account.id,
+      email: account.email,
       code: otp,
       type: OtpType.FORGOT_PASSWORD,
       isUsed: false,
@@ -204,25 +168,27 @@ export class AuthService {
     });
     await this.mailService.sendForgotPasswordEmail(
       dto.email,
-      profile.username,
+      account.username,
       otp,
       otpExpiresMinutes,
     );
-    return Response.success({ email: profile.email }, 'gửi email thành công');
+    return Response.success({ email: account.email }, 'gửi email thành công');
   }
 
   async resetPassword(dto: ResetPasswordDTO) {
     if (dto.newPassword !== dto.confirmPassword) {
       throw Response.errorBad('xác nhận mật khẩu không khớp');
     }
-    const profile = await this.findAccountProfileByEmail(dto.email);
-    if (!profile) {
+    const account = await this.accountRepo.findOne({
+      where: { email: dto.email },
+    });
+    if (!account) {
       throw Response.errorNotFound('email chưa đăng ký trên hệ thống');
     }
     const otpRecord = await this.otpCodeRepo.findOne({
       where: {
-        accountId: profile.account.id,
-        email: profile.email,
+        accountId: account.id,
+        email: account.email,
         code: dto.otp,
         type: OtpType.FORGOT_PASSWORD,
         isUsed: false,
@@ -238,8 +204,8 @@ export class AuthService {
       throw Response.errorBad('mã otp đã hết hạn');
     }
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    profile.account.password = passwordHash;
-    await this.accountRepo.save(profile.account);
+    account.password = passwordHash;
+    await this.accountRepo.save(account);
     otpRecord.isUsed = true;
     await this.otpCodeRepo.save(otpRecord);
     return Response.success(null, 'khôi phục mật khẩu thành công');
@@ -263,11 +229,10 @@ export class AuthService {
   }
 
   async requestChangeEmail(accountId: number) {
-    const soProfile = await this.soProfileRepo.findOne({
-      where: { accountId },
-      relations: { account: true },
+    const account = await this.accountRepo.findOne({
+      where: { id: accountId },
     });
-    if (!soProfile?.email) {
+    if (!account?.email) {
       return Response.errorBad('Tai khoan chua co email de xac thuc');
     }
     await this.otpCodeRepo.update(
@@ -286,18 +251,14 @@ export class AuthService {
       }),
     );
     await this.mailService.sendChangeEmailOtp(
-      soProfile.email,
-      soProfile.fullName ?? soProfile.account.username,
+      account.email,
+      account.fullName ?? account.username,
       otpCode,
     );
     return { message: 'Da gui ma OTP den email hien tai' };
   }
 
   async confirmChangeEmail(accountId: number, otp: string, newEmail: string) {
-    console.log('=== confirmChangeEmail ===');
-    console.log('accountId:', accountId);
-    console.log('otp:', otp);
-    console.log('newEmail:', newEmail);
     const otpRecord = await this.otpCodeRepo.findOne({
       where: {
         accountId,
@@ -310,14 +271,14 @@ export class AuthService {
     if (otpRecord.expiresAt.getTime() < Date.now()) {
       return Response.errorBad('Mã OTP hết hạn');
     }
-    const emailExists = await this.soProfileRepo.findOne({
+    const emailExists = await this.accountRepo.findOne({
       where: { email: newEmail },
     });
-    if (emailExists && emailExists.accountId != accountId)
+    if (emailExists && emailExists.id != accountId)
       return Response.errorBad('Email này đã được đăng ký bởi tài khoản khác');
     otpRecord.isUsed = true;
     await this.otpCodeRepo.save(otpRecord);
-    await this.soProfileRepo.update({ accountId }, { email: newEmail });
+    await this.accountRepo.update({ id: accountId }, { email: newEmail });
     return Response.success(null, 'Thay đổi email thành công');
   }
 }

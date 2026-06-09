@@ -11,18 +11,9 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
 
-import { SoProfile } from '../so/entities/so-profile.entity';
-import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
-
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      RefreshToken,
-      Account,
-      SoProfile,
-      DoanhNghiepProfile,
-      OtpCode,
-    ]),
+    TypeOrmModule.forFeature([RefreshToken, Account, OtpCode]),
     UserModule,
     JwtModule.register({}),
   ],

@@ -2,36 +2,72 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { SoProfile } from 'src/modules/so/entities/so-profile.entity';
-import { DoanhNghiepProfile } from 'src/modules/doanh-nghiep/entities/doanh-nghiep-profile.entity';
+import { Province } from 'src/modules/location/entities/province.entity';
+import { Ward } from 'src/modules/location/entities/ward.entity';
+import { Role } from 'src/modules/role/entities/role.entity';
 
-export enum AccountRole {
+export enum AccountType {
   SO = 'SO',
   DOANH_NGHIEP = 'DN',
 }
 
 @Entity('accounts')
 export class Account {
-  @PrimaryGeneratedColumn({ name: 'account_id' })
+  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'username', unique: true, length: 100 })
+  @Column({ unique: true })
   username: string;
 
-  @Column({ name: 'password' })
+  @Column()
   password: string;
 
+  // Phân biệt giao diện Sở vs Doanh nghiệp
   @Column({
-    name: 'role',
+    name: 'account_type',
     type: 'enum',
-    enum: AccountRole,
-    default: AccountRole.DOANH_NGHIEP,
+    enum: AccountType,
+    default: AccountType.SO,
   })
-  role: AccountRole;
+  accountType: AccountType;
+
+  // Thông tin cá nhân (theo SQL mới - gộp vào accounts)
+  @Column({ name: 'full_name', nullable: true })
+  fullName: string;
+
+  @Column({ name: 'date_of_birth', type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ nullable: true })
+  gender: string;
+
+  @Column({ nullable: true })
+  position: string; // chức danh
+
+  @Column({ nullable: true, unique: true })
+  email: string;
+
+  @Column({ nullable: true })
+  avatar: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ name: 'province_id', type: 'int', nullable: true })
+  provinceId: number | null;
+
+  @Column({ name: 'ward_id', type: 'int', nullable: true })
+  wardId: number | null;
+
+  // role_id chỉ có giá trị khi accountType = SO, NULL khi DN
+  @Column({ name: 'role_id', type: 'int', nullable: true })
+  roleId: number | null;
 
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
@@ -42,12 +78,16 @@ export class Account {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // eager: true → tự động load profile khi query account, không cần khai báo relations
-  @OneToOne(() => SoProfile, (profile) => profile.account, { eager: true })
-  soProfile: SoProfile;
+  // ── Relations ──────────────────────────────────────────
+  @ManyToOne(() => Role, { nullable: true, eager: true })
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
 
-  @OneToOne(() => DoanhNghiepProfile, (profile) => profile.account, {
-    eager: true,
-  })
-  doanhNghiepProfile: DoanhNghiepProfile;
+  @ManyToOne(() => Province, { nullable: true })
+  @JoinColumn({ name: 'province_id' })
+  province: Province;
+
+  @ManyToOne(() => Ward, { nullable: true })
+  @JoinColumn({ name: 'ward_id' })
+  ward: Ward;
 }

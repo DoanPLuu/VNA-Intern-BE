@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LocationModule } from './modules/location/location.module';
+import { RoleModule } from './modules/role/role.module';
+import { CompanyModule } from './modules/company/company.module';
 
 @Module({
   imports: [
@@ -28,6 +30,10 @@ import { LocationModule } from './modules/location/location.module';
     }),
 
     LocationModule,
+
+    RoleModule,
+
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

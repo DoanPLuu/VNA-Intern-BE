@@ -3,15 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserProfileDto } from './dto/userProfile.dto';
-import { Account } from '../auth/entities/account.entity';
-import { SoProfile, SoVaiTro } from '../so/entities/so-profile.entity';
+import { Account, AccountType } from '../auth/entities/account.entity';
 import { LocationService } from '../location/location.service';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(SoProfile)
-    private readonly soProfileRepository: Repository<SoProfile>,
     @InjectRepository(Account)
     private readonly accountRepository: Repository<Account>,
     private readonly locationService: LocationService,
@@ -21,6 +18,9 @@ export class UserService {
     return await this.accountRepository.findOne({ where: { username } });
   }
 
+  async findAccountById(id: number): Promise<Account | null> {
+    return this.accountRepository.findOne({ where: { id } });
+  }
   async createUserAccount(
     username: string,
     password: string,
@@ -34,60 +34,46 @@ export class UserService {
     const account = this.accountRepository.create({
       username,
       password: passwordHash,
+      accountType: AccountType.SO,
     });
     const savedAccount = await this.accountRepository.save(account);
-
-    // 2. Tạo User profile liên kết với Account
-    const soProfile = this.soProfileRepository.create({
-      account: savedAccount,
-    });
-    await this.soProfileRepository.save(soProfile);
-
     return savedAccount;
   }
 
   // ── Cập nhật thông tin cá nhân (SO profile) ─────────────
-  async updateUserProfile(dto: UserProfileDto): Promise<SoProfile | null> {
+  async updateUserProfile(dto: UserProfileDto): Promise<Account | null> {
     const account = await this.findAccountByUsername(dto.username);
 
     if (!account) return null;
-
-    let soProfile = account.soProfile;
-
-    if (!soProfile) {
-      soProfile = this.soProfileRepository.create({ accountId: account.id });
+    if (dto.email && dto.email !== account.email && account.email !== null) {
+      return null;
     }
-    // Cập nhật email trên soProfile
-    if (dto.email) {
-      if (dto.email != soProfile.email && soProfile.email !== null) return null;
-      soProfile.email = dto.email;
-    }
-
-    if (dto.fullName) soProfile.fullName = dto.fullName;
-    if (dto.dateOfBirth) soProfile.dateOfBirth = dto.dateOfBirth;
-    if (dto.gender) soProfile.gender = dto.gender;
-    if (dto.chucdanh) soProfile.chucdanh = dto.chucdanh;
-    if (dto.vaitro) soProfile.vaiTro = dto.vaitro as SoVaiTro;
-    if (dto.address) soProfile.address = dto.address;
-    if (dto.avatarUrl) soProfile.avatarUrl = dto.avatarUrl;
+    if (dto.email) account.email = dto.email;
+    if (dto.fullName) account.fullName = dto.fullName;
+    if (dto.dateOfBirth) account.dateOfBirth = dto.dateOfBirth;
+    if (dto.gender) account.gender = dto.gender;
+    if (dto.position) account.position = dto.position;
+    if (dto.address) account.address = dto.address;
+    if (dto.avatarUrl) account.avatar = dto.avatarUrl;
     // Tìm province và ward theo tên
     if (dto.province) {
       const province = await this.locationService.getProvinceByName(
         dto.province,
       );
-      soProfile.provinceId = province?.id ?? null;
+      account.provinceId = province?.id ?? null;
     }
     if (dto.ward) {
       const ward = await this.locationService.getWardByName(dto.ward);
-      soProfile.wardId = ward?.id ?? null;
+      account.wardId = ward?.id ?? null;
     }
 
-    return this.soProfileRepository.save(soProfile);
+    return this.accountRepository.save(account);
   }
 
-  async getUserProfile(username: string): Promise<SoProfile | null> {
-    const account = await this.findAccountByUsername(username);
-    if (!account?.soProfile) return null;
-    return account.soProfile;
+  async getUserProfileDetail(username: string): Promise<Account | null> {
+    return await this.accountRepository.findOne({
+      where: { username },
+      relations: { province: true, ward: true, role: true },
+    });
   }
 }

@@ -6,7 +6,6 @@ export class Province {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Mã tỉnh theo BNV (01, 02, ..., 34)
   @Column({ length: 10, unique: true })
   code: string;
 

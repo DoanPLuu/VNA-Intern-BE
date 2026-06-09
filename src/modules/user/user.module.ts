@@ -4,13 +4,12 @@ import { UserController } from './user.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from '../auth/entities/account.entity';
 import { OtpCode } from './entities/otp-code.entity';
-import { SoProfile } from '../so/entities/so-profile.entity';
 import { LocationModule } from '../location/location.module';
-import { DoanhNghiepProfile } from '../doanh-nghiep/entities/doanh-nghiep-profile.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SoProfile, DoanhNghiepProfile, Account, OtpCode]),
+    TypeOrmModule.forFeature([Account, RefreshToken, OtpCode]),
     LocationModule,
   ],
   controllers: [UserController],
