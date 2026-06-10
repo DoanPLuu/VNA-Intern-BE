@@ -32,15 +32,26 @@ export class MailService {
       from: this.from,
       to: email,
       subject: 'Khôi phục mật khẩu',
+      attachments: [
+        {
+          filename: 'logo.png',
+          path: 'D:/VNA/VNA-Intern-BE/src/public/images/khong nen _ sang.png',
+          cid: 'vna-logo',
+        },
+      ],
       html: `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="text-align: center; padding: 20px 0;">
-      <h2 style="color: #1a1a1a;">VNA GROUP</h2>
+       <img
+          src="cid:vna-logo"
+          alt="VNA GROUP"
+          style="max-width: 200px; height: auto;"
+        />
         </div>
           <p>Xin chào, <strong>${fullname}</strong></p>
             <p>
               Bạn vừa yêu cầu khôi phục mật khẩu cho
-              <strong>${username}</strong>.
+              <strong>${username}</strong>. sss
               Dưới đây là mã xác thực OTP của bạn:
             </p>
         <div style="text-align: center; margin: 30px 0;">
@@ -54,7 +65,7 @@ export class MailService {
       </p>
         <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
         <p>Nếu bạn không yêu cầu thay đổi mật khẩu, vui lòng bỏ qua email này.</p>
-  </div>
+  </div> 
       `,
     });
   }
