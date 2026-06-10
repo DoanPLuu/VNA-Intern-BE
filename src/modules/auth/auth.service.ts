@@ -155,7 +155,7 @@ export class AuthService {
       throw Response.errorNotFound('Không tìm thấy người dùng với email này');
     }
     const otp = this.getOTPCode();
-    const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 1);
+    const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 5);
     const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);
 
     await this.otpCodeRepo.save({
@@ -168,6 +168,7 @@ export class AuthService {
     });
     await this.mailService.sendForgotPasswordEmail(
       dto.email,
+      account.fullName,
       account.username,
       otp,
       otpExpiresMinutes,

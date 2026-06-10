@@ -23,6 +23,7 @@ export class MailService {
 
   async sendForgotPasswordEmail(
     email: string,
+    fullname: string,
     username: string,
     otp: string,
     expiresMinutes: number,
@@ -32,14 +33,28 @@ export class MailService {
       to: email,
       subject: 'Khôi phục mật khẩu',
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <p>Xin chào, <strong>${username}</strong></p>
-          <p>Bạn vừa yêu cầu khôi phục mật khẩu cho tài khoản của mình.</p>
-          <p>Mã OTP của bạn là:</p>
-          <h2 style="color: #2563eb; letter-spacing: 2px;">${otp}</h2>
-          <p>Mã OTP có hiệu lực trong <strong>${expiresMinutes} phút</strong>.</p>
-          <p>Nếu không phải bạn yêu cầu, vui lòng bỏ qua email này.</p>
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <div style="text-align: center; padding: 20px 0;">
+      <h2 style="color: #1a1a1a;">VNA GROUP</h2>
         </div>
+          <p>Xin chào, <strong>${fullname}</strong></p>
+            <p>
+              Bạn vừa yêu cầu khôi phục mật khẩu cho
+              <strong>${username}</strong>.
+              Dưới đây là mã xác thực OTP của bạn:
+            </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1d4ed8;">
+            ${otp}
+          </span>
+        </div>
+      <p>
+      <strong>Lưu ý:</strong>
+      Mã OTP có hiệu lực <strong>${expiresMinutes} phút</strong>
+      </p>
+        <p>Không chia sẻ mã này với bất kỳ ai, kể cả nhân viên hỗ trợ.</p>
+        <p>Nếu bạn không yêu cầu thay đổi mật khẩu, vui lòng bỏ qua email này.</p>
+  </div>
       `,
     });
   }
