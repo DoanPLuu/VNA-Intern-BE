@@ -1,15 +1,41 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserProfileDto } from './dto/userProfile.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+
+interface JwtPayload {
+  sub: number;
+  username: string;
+  role: string;
+}
+interface AuthenticatedRequest extends Request {
+  user: JwtPayload;
+}
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('update_userprofile')
-  async updateUserProfile(@Body() updateUserProfileDto: UserProfileDto) {
-    const result =
-      await this.userService.updateUserProfile(updateUserProfileDto);
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateUserProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() updateUserProfileDto: UserProfileDto,
+  ) {
+    const result = await this.userService.updateUserProfile(
+      req.user.sub,
+      updateUserProfileDto,
+    );
     if (!result) {
       return {
         message:
@@ -20,6 +46,6 @@ export class UserController {
   }
   @Get('profile/:username')
   async getUserProfileDetail(@Param('username') username: string) {
-    return this.userService.getUserProfileDetail(username);
+    return this.userService.getUserProfile(username);
   }
 }

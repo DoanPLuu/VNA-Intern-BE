@@ -35,7 +35,7 @@ async function bootstrap() {
 
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.API_PORT ?? 3000, 'localhost');
+  await app.listen(process.env.API_PORT ?? 8080, 'localhost');
 
   console.log(`Application is running on: ${await app.getUrl()}/api`);
 }

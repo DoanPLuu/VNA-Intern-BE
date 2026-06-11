@@ -25,7 +25,7 @@ export class OtpCode {
 
   // Email nhận OTP (dùng khi chưa có account - đăng ký DN)
   @Column({ name: 'email', type: 'varchar', length: 200, nullable: true })
-  email: string | null;
+  email?: string | null;
 
   @Column({ name: 'otp_code', type: 'varchar', length: 6 })
   code: string;

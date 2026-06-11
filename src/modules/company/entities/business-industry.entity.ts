@@ -1,11 +1,9 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('business_industries')
@@ -24,12 +22,6 @@ export class BusinessIndustry {
 
   @Column({ default: 'ACTIVE' })
   status: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   @ManyToOne(() => BusinessIndustry, { nullable: true })
   @JoinColumn({ name: 'parent_id' })

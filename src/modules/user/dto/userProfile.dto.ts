@@ -1,22 +1,30 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class UserProfileDto {
   @ApiProperty({ example: 'admin' })
+  @IsNotEmpty()
   @IsString()
   username: string;
 
   @ApiProperty({ example: 'admin@gmail.com' })
+  @IsNotEmpty({ message: 'Không được để trống' })
   @IsOptional()
   @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
     message: 'Email không đúng định dạng',
   })
-  email?: string;
+  email: string;
 
   @ApiProperty({ example: 'Nguyễn Văn A' })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Không được để trống' })
   @IsString()
-  fullName?: string;
+  fullName: string;
 
   @ApiProperty({ example: '1995-06-01' })
   @IsOptional()
@@ -29,9 +37,9 @@ export class UserProfileDto {
   gender?: string;
 
   @ApiProperty({ example: 'Quản trị viên' })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Không được để trống' })
   @IsString()
-  position?: string;
+  position: string;
 
   // Truyền tên tỉnh (vd: "Tp Hồ Chí Minh") → service tự tìm id
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
