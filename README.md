@@ -112,3 +112,5 @@ Intern project for VNA Group Co
 2. Bật Xác minh 2 bước nếu chưa bật
 3. Tìm Mật khẩu ứng dụng → Tạo mới → đặt tên be_project
 4. Copy mật khẩu 16 ký tự vào MAIL_PASSWORD trong file .env
+
+File business-industry.sql chưa xong

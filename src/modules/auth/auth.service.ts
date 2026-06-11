@@ -8,6 +8,7 @@ import { MailService } from 'src/common/mail/mail.service';
 import { Repository } from 'typeorm';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
+import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
@@ -20,7 +21,8 @@ export class AuthService {
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     @InjectRepository(Account)
     private readonly accountRepo: Repository<Account>,
-
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(OtpCode)
     private readonly otpCodeRepo: Repository<OtpCode>,
 
@@ -54,6 +56,11 @@ export class AuthService {
   async login(dto: LoginDTO) {
     const { username, password, rememberMe } = dto;
     const account = await this.validateUser(username, password);
+    if (!account.isActive || account.isDeleted)
+      return {
+        message:
+          'Tài khoản đã bị xóa hoặc đã bị khóa. Vui lòng liên hệ admin để biết thêm thông tin',
+      };
     const tokens = await this.generateTokens(account, rememberMe ?? false);
     return {
       message: 'Đăng nhập thành công',
@@ -70,13 +77,7 @@ export class AuthService {
     const existingAccount = await this.findAccountByUserName(username);
     if (existingAccount) return { message: 'Tài khoản đã tồn tại' };
     // Tạo account
-    const account = this.accountRepo.create({
-      username,
-      password: await bcrypt.hash(password, 10),
-      accountType,
-    });
-    const saveAccount = await this.accountRepo.save(account);
-    return saveAccount;
+    return this.userService.createUserAccount(username, password, accountType);
   }
 
   getOTPCode(): string {
@@ -104,7 +105,7 @@ export class AuthService {
     const payload: Record<string, unknown> = {
       sub: account.id,
       username: account.username,
-      role: account.role,
+      accountType: account.accountType,
     };
 
     // ── Access Token ──────────────────────────────────────────
@@ -154,13 +155,17 @@ export class AuthService {
     if (!account) {
       throw Response.errorNotFound('Không tìm thấy người dùng với email này');
     }
+    const user = await this.userRepo.findOne({
+      where: { accountId: account.id },
+    });
+    const displayName = user?.fullName ?? account.username;
     const otp = this.getOTPCode();
     const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 5);
     const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);
 
     await this.otpCodeRepo.save({
       accountId: account.id,
-      email: account.email,
+      email: account.email ?? undefined,
       code: otp,
       type: OtpType.FORGOT_PASSWORD,
       isUsed: false,
@@ -168,7 +173,7 @@ export class AuthService {
     });
     await this.mailService.sendForgotPasswordEmail(
       dto.email,
-      account.fullName,
+      displayName,
       account.username,
       otp,
       otpExpiresMinutes,
@@ -189,7 +194,6 @@ export class AuthService {
     const otpRecord = await this.otpCodeRepo.findOne({
       where: {
         accountId: account.id,
-        email: account.email,
         code: dto.otp,
         type: OtpType.FORGOT_PASSWORD,
         isUsed: false,
@@ -199,10 +203,10 @@ export class AuthService {
       },
     });
     if (!otpRecord) {
-      throw Response.errorBad('mã otp không đúng');
+      throw Response.errorBad('Mã OTP không đúng');
     }
     if (otpRecord.expiresAt.getTime() < Date.now()) {
-      throw Response.errorBad('mã otp đã hết hạn');
+      throw Response.errorBad('Mã OTP đã hết hạn');
     }
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
     account.password = passwordHash;
@@ -226,9 +230,8 @@ export class AuthService {
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
     account.password = newPasswordHash;
     await this.accountRepo.save(account);
-    return Response.success(null,'Đổi mật khẩu thành công');
+    return Response.success(null, 'Đổi mật khẩu thành công');
   }
-
   async requestChangeEmail(accountId: number) {
     const account = await this.accountRepo.findOne({
       where: { id: accountId },
@@ -251,12 +254,14 @@ export class AuthService {
         expiresAt: new Date(Date.now() + expiresMinutes * 60 * 1000),
       }),
     );
+    const user = await this.userRepo.findOne({ where: { accountId } });
+    const displayName = user?.fullName ?? account.username;
     await this.mailService.sendChangeEmailOtp(
       account.email,
-      account.fullName ?? account.username,
+      displayName,
       otpCode,
     );
-    return { message: 'Da gui ma OTP den email hien tai' };
+    return Response.success(null, 'Đã gửi mã OTP đến email hiện tại');
   }
 
   async confirmChangeEmail(accountId: number, otp: string, newEmail: string) {
