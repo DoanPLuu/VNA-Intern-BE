@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
 import { Account, AccountType } from '../auth/entities/account.entity';
-import { User } from './entities/user.entity';
 import { LocationService } from '../location/location.service';
+import { ListUserDto } from './dto/listUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UserService {
@@ -140,6 +141,69 @@ export class UserService {
     return {
       ...user,
       account: accountWithoutPassword,
+    };
+  }
+  // user manager //
+  async getAllUsers(query: ListUserDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.account', 'account')
+      .where('account.accountType = :accountType', {
+        accountType: AccountType.SO,
+      });
+    if (query.fullname) {
+      qb.andWhere('LOWER(user.fullName) LIKE LOWER(:fullName)', {
+        fullName: `%${query.fullname.trim()}%`,
+      });
+    }
+    if (query.username) {
+      qb.andWhere('LOWER(account.username) LIKE LOWER(:username)', {
+        username: `%${query.username.trim()}%`,
+      });
+    }
+
+    if (query.email) {
+      qb.andWhere('LOWER(account.email) LIKE LOWER(:email)', {
+        email: `%${query.email.trim()}%`,
+      });
+    }
+
+    if (query.position) {
+      qb.andWhere('LOWER(user.position) LIKE LOWER(:position)', {
+        position: `%${query.position.trim()}%`,
+      });
+    }
+
+    if (query.isActive !== undefined) {
+      qb.andWhere('account.isActive = :isActive', {
+        isActive: query.isActive === 'true',
+      });
+    }
+    qb.orderBy('user.createdAt', 'DESC').skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+    return {
+      items: items.map((user) => ({
+        id: user.id,
+        accountId: user.accountId,
+        fullName: user.fullName,
+        username: user.account.username,
+        email: user.account.email,
+        position: user.position,
+        isActive: user.account.isActive,
+        isDeleted: user.account.isDeleted,
+        role: null,
+        createdAt: user.createdAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 }

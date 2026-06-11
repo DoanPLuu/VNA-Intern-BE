@@ -4,14 +4,15 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { UserService } from './user.service';
-import { UserProfileDto } from './dto/userProfile.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
-
+import { ListUserDto } from './dto/listUser.dto';
+import { UserProfileDto } from './dto/userProfile.dto';
+import { UserService } from './user.service';
 interface JwtPayload {
   sub: number;
   username: string;
@@ -47,5 +48,11 @@ export class UserController {
   @Get('profile/:username')
   async getUserProfileDetail(@Param('username') username: string) {
     return this.userService.getUserProfile(username);
+  }
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async listUsers(@Query() query: ListUserDto) {
+    return this.userService.getAllUsers(query);
   }
 }
