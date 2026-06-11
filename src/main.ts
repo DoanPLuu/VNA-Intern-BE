@@ -1,14 +1,17 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { GlobalExceptionFilter } from './common/filters/service.error.filter';
 import * as express from 'express';
+import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/service.error.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'http://localhost:3000', // Cho phép Frontend cổng 3000 gọi sang
+    origin: [
+      
+      'http://localhost:3000',
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -35,7 +38,7 @@ async function bootstrap() {
 
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.API_PORT ?? 3000, 'localhost');
+  await app.listen(process.env.API_PORT ?? 8080, 'localhost');
 
   console.log(`Application is running on: ${await app.getUrl()}/api`);
 }

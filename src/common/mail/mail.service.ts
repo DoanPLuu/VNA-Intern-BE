@@ -42,7 +42,7 @@ export class MailService {
       html: `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="text-align: center; padding: 20px 0;">
-       <img
+      <img
           src="cid:vna-logo"
           alt="VNA GROUP"
           style="max-width: 200px; height: auto;"

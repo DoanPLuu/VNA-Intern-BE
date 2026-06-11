@@ -226,7 +226,7 @@ export class AuthService {
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
     account.password = newPasswordHash;
     await this.accountRepo.save(account);
-    return Response.success('Đổi mật khẩu thành công');
+    return Response.success(null,'Đổi mật khẩu thành công');
   }
 
   async requestChangeEmail(accountId: number) {
