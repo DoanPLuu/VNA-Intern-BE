@@ -114,3 +114,5 @@ Intern project for VNA Group Co
 4. Copy mật khẩu 16 ký tự vào MAIL_PASSWORD trong file .env
 
 File business-industry.sql chưa xong
+Đổi tên file business-industry.sql thành file business.sql
+File busniness.sql đã cập nhật xong có thể sử dụng

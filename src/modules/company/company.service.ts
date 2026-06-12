@@ -196,7 +196,7 @@ export class CompanyService {
     | { error: ReturnType<typeof Response.errorNotFound> }
   > {
     const businessType = await this.businessTypeRepo.findOne({
-      where: { code: dto.business_type },
+      where: { name: dto.business_type.trim() },
     });
     if (!businessType) {
       return {
@@ -205,7 +205,7 @@ export class CompanyService {
     }
 
     const businessIndustry = await this.businessIndustryRepo.findOne({
-      where: { code: dto.business_industry },
+      where: { name: dto.business_industry.trim() },
     });
     if (!businessIndustry) {
       return {

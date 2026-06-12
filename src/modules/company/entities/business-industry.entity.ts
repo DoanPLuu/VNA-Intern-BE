@@ -17,10 +17,13 @@ export class BusinessIndustry {
   @Column()
   name: string;
 
+  @Column({ name: 'level', type: 'varchar', default: 'Cấp 4' })
+  level: string;
+
   @Column({ name: 'parent_id', type: 'int', nullable: true })
   parentId: number | null;
 
-  @Column({ default: 'ACTIVE' })
+  @Column({ type: 'varchar', default: 'ACTIVE' })
   status: string;
 
   @ManyToOne(() => BusinessIndustry, { nullable: true })
