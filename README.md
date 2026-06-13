@@ -116,3 +116,15 @@ Intern project for VNA Group Co
 File business-industry.sql chưa xong
 Đổi tên file business-industry.sql thành file business.sql
 File busniness.sql đã cập nhật xong có thể sử dụng
+
+Cài đặt các thư viện trên để có thể thực hiện chức năng upload, xem, xóa, sửa, file
+npm install multer
+npm install -D @types/multer
+
+# Tạo thư mục uploads/ ở root project (cùng cấp với src/):
+mkdir uploads
+echo "" > uploads/.gitkeep
+
+# Thêm uploads/ vào .gitignore
+uploads/*
+!uploads/.gitkeep

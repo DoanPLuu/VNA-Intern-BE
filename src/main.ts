@@ -4,9 +4,14 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { GlobalExceptionFilter } from './common/filters/service.error.filter';
 import * as express from 'express';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads',
+  });
   app.enableCors({
     origin: 'http://localhost:3000', // Cho phép Frontend cổng 3000 gọi sang
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
