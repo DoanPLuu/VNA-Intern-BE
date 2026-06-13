@@ -62,12 +62,6 @@ export class UserController {
     return this.userService.getAllUsers(query);
   }
 
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async getUserById(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.getUserById(id);
-  }
   @Patch('delete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -80,6 +74,18 @@ export class UserController {
   @ApiBearerAuth()
   async restoreUsers(@Body() dto: DeleteUsersDto) {
     return this.userService.restoreUsers(dto);
+  }
+  @Get('delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async listDeletedUsers(@Query() query: ListUserDto) {
+    return this.userService.getDeletedUsers(query);
+  }
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async getUserById(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.getUserById(id);
   }
   @Patch(':accountId')
   @UseGuards(JwtAuthGuard)

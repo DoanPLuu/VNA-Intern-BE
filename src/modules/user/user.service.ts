@@ -227,6 +227,89 @@ export class UserService {
       },
     };
   }
+  async getDeletedUsers(query: ListUserDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const qb = this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.account', 'account')
+      .leftJoinAndSelect('account.role', 'role')
+      .where('account.accountType = :accountType', {
+        accountType: AccountType.SO,
+      })
+      .andWhere('account.isDeleted = :isDeleted', {
+        isDeleted: true,
+      });
+
+    if (query.fullname) {
+      qb.andWhere('LOWER(user.fullName) LIKE LOWER(:fullName)', {
+        fullName: `%${query.fullname.trim()}%`,
+      });
+    }
+
+    if (query.username) {
+      qb.andWhere('LOWER(account.username) LIKE LOWER(:username)', {
+        username: `%${query.username.trim()}%`,
+      });
+    }
+
+    if (query.email) {
+      qb.andWhere('LOWER(account.email) LIKE LOWER(:email)', {
+        email: `%${query.email.trim()}%`,
+      });
+    }
+
+    if (query.roleId) {
+      qb.andWhere('account.roleId = :roleId', {
+        roleId: query.roleId,
+      });
+    }
+
+    if (query.position) {
+      qb.andWhere('LOWER(user.position) LIKE LOWER(:position)', {
+        position: `%${query.position.trim()}%`,
+      });
+    }
+
+    if (query.isActive !== undefined) {
+      qb.andWhere('account.isActive = :isActive', {
+        isActive: query.isActive === 'true',
+      });
+    }
+
+    qb.orderBy('user.createdAt', 'DESC').skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return {
+      items: items.map((user) => ({
+        id: user.id,
+        accountId: user.accountId,
+        fullName: user.fullName,
+        username: user.account.username,
+        email: user.account.email,
+        role: user.account.role
+          ? {
+              id: user.account.role.id,
+              code: user.account.role.code,
+              name: user.account.role.name,
+            }
+          : null,
+        position: user.position,
+        isActive: user.account.isActive,
+        isDeleted: user.account.isDeleted,
+        createdAt: user.createdAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
   async getUserById(accountId: number) {
     const user = await this.userRepo.findOne({
       where: { accountId },
