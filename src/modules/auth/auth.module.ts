@@ -11,11 +11,13 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
 import { User } from '../user/entities/user.entity';
+import { CompanyModule } from '../company/company.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RefreshToken, Account, OtpCode, User]),
     UserModule,
+    CompanyModule,
     JwtModule.register({}),
   ],
   controllers: [AuthController],

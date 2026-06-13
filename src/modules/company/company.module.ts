@@ -7,6 +7,9 @@ import { BusinessIndustry } from './entities/business-industry.entity';
 import { BusinessType } from './entities/business-type.entity';
 import { Account } from '../auth/entities/account.entity';
 import { LocationModule } from '../location/location.module';
+import { OtpCode } from '../user/entities/otp-code.entity';
+import { MailService } from 'src/common/mail/mail.service';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -15,10 +18,13 @@ import { LocationModule } from '../location/location.module';
       BusinessIndustry,
       BusinessType,
       Account,
+      OtpCode,
     ]),
     LocationModule,
+    JwtModule.register({}),
   ],
   controllers: [CompanyController],
-  providers: [CompanyService],
+  providers: [CompanyService, MailService],
+  exports: [CompanyService],
 })
 export class CompanyModule {}

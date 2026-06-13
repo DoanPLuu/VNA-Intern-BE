@@ -13,6 +13,8 @@ import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account, AccountType } from './entities/account.entity';
 import { User } from '../user/entities/user.entity';
+import { CreateCompany } from '../company/dto/company.dto';
+import { CompanyService } from '../company/company.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +28,7 @@ export class AuthService {
     @InjectRepository(OtpCode)
     private readonly otpCodeRepo: Repository<OtpCode>,
 
+    private readonly companyService: CompanyService,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -80,7 +83,7 @@ export class AuthService {
     return this.userService.createUserAccount(username, password, accountType);
   }
 
-  getOTPCode(): string {
+  private getOTPCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
@@ -219,13 +222,13 @@ export class AuthService {
     const account = await this.accountRepo.findOne({
       where: { id: accountId },
     });
-    if (!account) return Response.errorNotFound('Tài khoản không tồn tại');
+    if (!account) throw Response.errorNotFound('Tài khoản không tồn tại');
 
     const isMatch = await bcrypt.compare(dto.password, account.password);
-    if (!isMatch) return Response.errorBad('Mật khẩu hiện tại không khớp');
+    if (!isMatch) throw Response.errorBad('Mật khẩu hiện tại không khớp');
 
     if (dto.newPassword !== dto.confirmPassword)
-      return Response.errorBad('Xác nhận mật khẩu không khớp');
+      throw Response.errorBad('Xác nhận mật khẩu không khớp');
 
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
     account.password = newPasswordHash;
@@ -238,7 +241,7 @@ export class AuthService {
       where: { id: accountId },
     });
     if (!account?.email) {
-      return Response.errorBad('Tai khoan chua co email de xac thuc');
+      throw Response.errorBad('Tai khoan chua co email de xac thuc');
     }
     await this.otpCodeRepo.update(
       { accountId, type: OtpType.CHANGE_EMAIL, isUsed: false },
@@ -274,18 +277,74 @@ export class AuthService {
         isUsed: false,
       },
     });
-    if (!otpRecord) return Response.errorBad('Mã OTP không hợp lệ');
+    if (!otpRecord) throw Response.errorBad('Mã OTP không hợp lệ');
     if (otpRecord.expiresAt.getTime() < Date.now()) {
-      return Response.errorBad('Mã OTP hết hạn');
+      throw Response.errorBad('Mã OTP hết hạn');
     }
     const emailExists = await this.accountRepo.findOne({
       where: { email: newEmail },
     });
     if (emailExists && emailExists.id != accountId)
-      return Response.errorBad('Email này đã được đăng ký bởi tài khoản khác');
+      throw Response.errorBad('Email này đã được đăng ký bởi tài khoản khác');
     otpRecord.isUsed = true;
     await this.otpCodeRepo.save(otpRecord);
     await this.accountRepo.update({ id: accountId }, { email: newEmail });
     return Response.success(null, 'Thay đổi email thành công');
+  }
+
+  async registerCompany(dto: CreateCompany) {
+    const result = await this.companyService.registerCompany(dto);
+    if ('success' in result && result.success === false) throw result;
+    if (!('accountId' in result)) throw result;
+    const { accountId, email } = result;
+    const otp = this.getOTPCode();
+    const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 5);
+    const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);
+    await this.otpCodeRepo.save({
+      accountId,
+      code: otp,
+      type: OtpType.REGISTER_DN,
+      isUsed: false,
+      expiresAt,
+    });
+    await this.mailService.sendRegisterDnOtp(email, dto.business_name, otp);
+    return Response.success(
+      { email },
+      'Đăng ký thành công, vui lòng kiểm tra email để xác nhận',
+    );
+  }
+
+  async confirmRegisterCompany(email: string, otp: string) {
+    const account = await this.accountRepo.findOne({ where: { email } });
+    if (!account) {
+      throw Response.errorNotFound('Không tìm thấy tài khoản với email này');
+    }
+
+    const otpRecord = await this.otpCodeRepo.findOne({
+      where: {
+        accountId: account.id,
+        code: otp,
+        type: OtpType.REGISTER_DN,
+        isUsed: false,
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (!otpRecord) {
+      throw Response.errorBad('Mã OTP không đúng');
+    }
+    if (otpRecord.expiresAt.getTime() < Date.now()) {
+      throw Response.errorBad('Mã OTP đã hết hạn');
+    }
+
+    // Kích hoạt
+    await this.companyService.activateCompany(account.id);
+
+    otpRecord.isUsed = true;
+    await this.otpCodeRepo.save(otpRecord);
+
+    return Response.success(
+      null,
+      'Xác nhận email thành công, tài khoản đã được kích hoạt',
+    );
   }
 }

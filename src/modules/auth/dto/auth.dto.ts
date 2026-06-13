@@ -91,3 +91,13 @@ export class ChangePasswordDTO {
   @MinLength(8, { message: 'Xác nhận mật khẩu phải có ít nhất 8 ký tự' })
   confirmPassword: string;
 }
+export class ConfirmRegisterCompanyDTO {
+  @ApiProperty({ example: 'gnagroup@gmail.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+}

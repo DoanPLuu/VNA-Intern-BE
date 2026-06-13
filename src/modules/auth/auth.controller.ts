@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import {
   ChangePasswordDTO,
   ConfirmNewEmailDTO,
+  ConfirmRegisterCompanyDTO,
   LoginDTO,
   RegisterDTO,
 } from './dto/auth.dto';
@@ -12,11 +13,12 @@ import { ResetPasswordDTO } from './dto/auth.dto';
 import { AccountType } from './entities/account.entity';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { CreateCompany } from '../company/dto/company.dto';
 
 interface JwtPayload {
   sub: number;
   username: string;
-  role: string;
+  accountType: AccountType;
 }
 
 interface AuthenticatedRequest extends Request {
@@ -85,5 +87,17 @@ export class AuthController {
       body.otp,
       body.email,
     );
+  }
+
+  @Post('register-company')
+  @ApiOperation({ summary: 'Bước 1: DN tự đăng ký, gửi OTP xác nhận email' })
+  async registerCompany(@Body() dto: CreateCompany) {
+    return await this.authService.registerCompany(dto);
+  }
+
+  @Post('register-company/confirm')
+  @ApiOperation({ summary: 'Bước 2: Xác nhận OTP, kích hoạt tài khoản DN' })
+  async confirmRegisterCompany(@Body() dto: ConfirmRegisterCompanyDTO) {
+    return this.authService.confirmRegisterCompany(dto.email, dto.otp);
   }
 }

@@ -11,11 +11,12 @@ import { UserService } from './user.service';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { AccountType } from '../auth/entities/account.entity';
 
 interface JwtPayload {
   sub: number;
   username: string;
-  role: string;
+  accountType: AccountType;
 }
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
