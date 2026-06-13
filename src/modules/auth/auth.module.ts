@@ -6,15 +6,22 @@ import { MailService } from 'src/common/mail/mail.service';
 import { OtpCode } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
 
+import { EmailChangeSession } from '../user/entities/email-change-session.entity';
+import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
-import { User } from '../user/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RefreshToken, Account, OtpCode, User]),
+    TypeOrmModule.forFeature([
+      RefreshToken,
+      Account,
+      OtpCode,
+      User,
+      EmailChangeSession,
+    ]),
     UserModule,
     JwtModule.register({}),
   ],

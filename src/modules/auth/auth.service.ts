@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { Response } from 'src/common';
 import { MailService } from 'src/common/mail/mail.service';
 import { Repository } from 'typeorm';
+import { EmailChangeSession } from '../user/entities/email-change-session.entity';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
 import { User } from '../user/entities/user.entity';
@@ -13,7 +14,6 @@ import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account, AccountType } from './entities/account.entity';
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -25,6 +25,8 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(OtpCode)
     private readonly otpCodeRepo: Repository<OtpCode>,
+    @InjectRepository(EmailChangeSession)
+    private readonly emailChangeSessionRepo: Repository<EmailChangeSession>,
 
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
@@ -286,5 +288,210 @@ export class AuthService {
     await this.otpCodeRepo.save(otpRecord);
     await this.accountRepo.update({ id: accountId }, { email: newEmail });
     return Response.success(null, 'Thay đổi email thành công');
+  }
+
+  //user-manager
+  async requestChangeEmailOtpByAdmin(
+    adminAccountId: number,
+    targetAccountId: number,
+  ) {
+    const targetAccount = await this.accountRepo.findOne({
+      where: { id: targetAccountId },
+    });
+
+    if (!targetAccount) {
+      throw Response.errorNotFound('Không tìm thấy tài khoản người dùng');
+    }
+
+    if (!targetAccount.email) {
+      throw Response.errorBad(
+        'Tài khoản này chưa có email hiện tại để xác thực',
+      );
+    }
+
+    await this.otpCodeRepo.update(
+      {
+        accountId: targetAccountId,
+        type: OtpType.CHANGE_EMAIL,
+        isUsed: false,
+      },
+      { isUsed: true },
+    );
+
+    const otpCode = this.getOTPCode();
+    const expiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 5);
+
+    await this.otpCodeRepo.save(
+      this.otpCodeRepo.create({
+        accountId: targetAccountId,
+        code: otpCode,
+        type: OtpType.CHANGE_EMAIL,
+        isUsed: false,
+        expiresAt: new Date(Date.now() + expiresMinutes * 60 * 1000),
+      }),
+    );
+
+    const user = await this.userRepo.findOne({
+      where: { accountId: targetAccountId },
+    });
+    const displayName = user?.fullName ?? targetAccount.username;
+
+    await this.mailService.sendChangeEmailOtp(
+      targetAccount.email,
+      displayName,
+      otpCode,
+    );
+
+    return Response.success(
+      {
+        accountId: targetAccountId,
+        requestedBy: adminAccountId,
+        currentEmail: targetAccount.email,
+      },
+      'Đã gửi mã OTP đến email hiện tại của người dùng',
+    );
+  }
+
+  async verifyChangeEmailOtpByAdmin(
+    adminAccountId: number,
+    targetAccountId: number,
+    otp: string,
+  ) {
+    const targetAccount = await this.accountRepo.findOne({
+      where: { id: targetAccountId },
+    });
+
+    if (!targetAccount) {
+      throw Response.errorNotFound('Không tìm thấy tài khoản người dùng');
+    }
+
+    const otpRecord = await this.otpCodeRepo.findOne({
+      where: {
+        accountId: targetAccountId,
+        code: otp,
+        type: OtpType.CHANGE_EMAIL,
+        isUsed: false,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    if (!otpRecord) {
+      throw Response.errorBad('Mã OTP không hợp lệ');
+    }
+
+    if (otpRecord.expiresAt.getTime() < Date.now()) {
+      throw Response.errorBad('Mã OTP đã hết hạn');
+    }
+
+    const sessionExpiresMinutes = this.config.get<number>(
+      'CHANGE_EMAIL_SESSION_EXPIRES_MINUTES',
+      10,
+    );
+
+    const session = await this.accountRepo.manager.transaction(
+      async (manager) => {
+        const otpRepo = manager.getRepository(OtpCode);
+        const emailChangeSessionRepo =
+          manager.getRepository(EmailChangeSession);
+
+        await otpRepo.update({ id: otpRecord.id }, { isUsed: true });
+
+        await emailChangeSessionRepo.update(
+          {
+            accountId: targetAccountId,
+            verifiedByAccountId: adminAccountId,
+            isUsed: false,
+          },
+          { isUsed: true },
+        );
+
+        return emailChangeSessionRepo.save(
+          emailChangeSessionRepo.create({
+            accountId: targetAccountId,
+            verifiedByAccountId: adminAccountId,
+            isUsed: false,
+            expiresAt: new Date(Date.now() + sessionExpiresMinutes * 60 * 1000),
+          }),
+        );
+      },
+    );
+
+    return Response.success(
+      {
+        sessionId: session.id,
+        expiresAt: session.expiresAt,
+      },
+      'Xác thực OTP thành công',
+    );
+  }
+
+  async submitNewEmailByAdmin(
+    adminAccountId: number,
+    targetAccountId: number,
+    sessionId: string,
+    newEmail: string,
+  ) {
+    const targetAccount = await this.accountRepo.findOne({
+      where: { id: targetAccountId },
+    });
+
+    if (!targetAccount) {
+      throw Response.errorNotFound('Không tìm thấy tài khoản người dùng');
+    }
+
+    const session = await this.emailChangeSessionRepo.findOne({
+      where: {
+        id: sessionId,
+        accountId: targetAccountId,
+        verifiedByAccountId: adminAccountId,
+        isUsed: false,
+      },
+    });
+
+    if (!session) {
+      throw Response.errorBad('Phiên đổi email không hợp lệ');
+    }
+
+    if (session.expiresAt.getTime() < Date.now()) {
+      throw Response.errorBad('Phiên đổi email đã hết hạn');
+    }
+
+    const normalizedNewEmail = newEmail.trim().toLowerCase();
+
+    if (targetAccount.email?.toLowerCase() === normalizedNewEmail) {
+      throw Response.errorBad('Email mới không được trùng với email hiện tại');
+    }
+
+    const existedEmail = await this.accountRepo.findOne({
+      where: { email: normalizedNewEmail },
+    });
+
+    if (existedEmail && existedEmail.id !== targetAccountId) {
+      throw Response.errorDuplicated(
+        'Email này đã được đăng ký bởi tài khoản khác',
+      );
+    }
+
+    await this.accountRepo.manager.transaction(async (manager) => {
+      const accountRepo = manager.getRepository(Account);
+      const emailChangeSessionRepo = manager.getRepository(EmailChangeSession);
+
+      await accountRepo.update(
+        { id: targetAccountId },
+        { email: normalizedNewEmail },
+      );
+
+      await emailChangeSessionRepo.update({ id: session.id }, { isUsed: true });
+    });
+
+    return Response.success(
+      {
+        accountId: targetAccountId,
+        email: normalizedNewEmail,
+      },
+      'Thay đổi email thành công',
+    );
   }
 }

@@ -1,18 +1,26 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { AuthService } from './auth.service';
 import {
+  AdminSubmitNewEmailDTO,
+  AdminVerifyChangeEmailOtpDTO,
   ChangePasswordDTO,
   ConfirmNewEmailDTO,
   LoginDTO,
   RegisterDTO,
+  ResetPasswordDTO,
 } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
-import { ResetPasswordDTO } from './dto/auth.dto';
-
 import { AccountType } from './entities/account.entity';
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
-
 interface JwtPayload {
   sub: number;
   username: string;
@@ -84,6 +92,58 @@ export class AuthController {
       req.user.sub,
       body.otp,
       body.email,
+    );
+  }
+  //user-manager
+  @Post('admin/user/:accountId/change-email/request-otp')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin bước 1 - gửi OTP đổi email cho người dùng' })
+  async requestChangeEmailOtpByAdmin(
+    @Req() req: AuthenticatedRequest,
+    @Param('accountId', ParseIntPipe) accountId: number,
+  ) {
+    return this.authService.requestChangeEmailOtpByAdmin(
+      req.user.sub,
+      accountId,
+    );
+  }
+
+  @Post('admin/user/:accountId/change-email/verify-otp')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Admin bước 2 - xác thực OTP đổi email cho người dùng',
+  })
+  async verifyChangeEmailOtpByAdmin(
+    @Req() req: AuthenticatedRequest,
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: AdminVerifyChangeEmailOtpDTO,
+  ) {
+    return this.authService.verifyChangeEmailOtpByAdmin(
+      req.user.sub,
+      accountId,
+      dto.otp,
+    );
+  }
+
+  @Post('admin/user/:accountId/change-email/submit-new-email')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Admin bước 3 - nhập email mới cho người dùng sau khi OTP đã xác thực',
+  })
+  async submitNewEmailByAdmin(
+    @Req() req: AuthenticatedRequest,
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: AdminSubmitNewEmailDTO,
+  ) {
+    return this.authService.submitNewEmailByAdmin(
+      req.user.sub,
+      accountId,
+      dto.sessionId,
+      dto.newEmail,
     );
   }
 }

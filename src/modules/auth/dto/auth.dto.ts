@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
   Length,
   MinLength,
-  IsEmail,
 } from 'class-validator';
 export class LoginDTO {
   @ApiProperty({ example: 'admin' })
@@ -90,4 +90,24 @@ export class ChangePasswordDTO {
   @IsNotEmpty({ message: 'Vui lòng xác nhận mật khẩu mới' })
   @MinLength(8, { message: 'Xác nhận mật khẩu phải có ít nhất 8 ký tự' })
   confirmPassword: string;
+}
+//user-manager
+export class AdminVerifyChangeEmailOtpDTO {
+  @ApiProperty({ example: '123456' })
+  @IsNotEmpty({ message: 'Mã OTP không được để trống' })
+  @IsString({ message: 'Mã OTP phải là chuỗi ký tự' })
+  @Length(6, 6, { message: 'Mã OTP phải gồm 6 ký tự' })
+  otp: string;
+}
+
+export class AdminSubmitNewEmailDTO {
+  @ApiProperty({ example: 'newemail@gmail.com' })
+  @IsNotEmpty({ message: 'Email mới không được để trống' })
+  @IsEmail({}, { message: 'Email mới không đúng định dạng' })
+  newEmail: string;
+
+  @ApiProperty({ example: 'd290f1ee-6c54-4b01-90e6-d701748f0851' })
+  @IsNotEmpty({ message: 'Phiên đổi email không được để trống' })
+  @IsString({ message: 'Phiên đổi email không hợp lệ' })
+  sessionId: string;
 }

@@ -33,7 +33,7 @@ export class CreateUserDto {
     default: '12345678',
   })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Mật khẩu phải là chuỗi ký tự' })
   @MinLength(8, {
     message: 'Mật khẩu phải có ít nhất 8 ký tự',
   })
@@ -46,13 +46,13 @@ export class CreateUserDto {
 
   @ApiProperty({ example: 1 })
   @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
+  @IsInt({ message: 'Vai trò phải là số nguyên' })
+  @Min(1, { message: 'Vai trò phải lớn hơn hoặc bằng 1' })
   roleId: number;
 
   @ApiProperty({ example: 'Nguyen Van A' })
-  @IsNotEmpty()
-  @IsString()
+  @IsNotEmpty({ message: 'Họ và tên không được để trống' })
+  @IsString({ message: 'Họ và tên phải là chuỗi ký tự' })
   fullName: string;
 
   @ApiPropertyOptional({ example: '1995-06-01' })
@@ -63,36 +63,36 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ example: 'Nam' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Giới tính phải là chuỗi ký tự' })
   gender?: string;
 
   @ApiPropertyOptional({ example: 'Chuyen vien' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Chức danh phải là chuỗi ký tự' })
   position?: string;
 
   @ApiPropertyOptional({ example: 'Thanh pho Ho Chi Minh' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Tỉnh/thành phố phải là chuỗi ký tự' })
   province?: string;
 
   @ApiPropertyOptional({ example: 'Phuong Go Vap' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Phường/xã phải là chuỗi ký tự' })
   ward?: string;
 
   @ApiPropertyOptional({ example: '123 Nguyen Trai' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Địa chỉ phải là chuỗi ký tự' })
   address?: string;
 
   @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Đường dẫn ảnh đại diện phải là chuỗi ký tự' })
   avatarUrl?: string | null;
 
   @ApiPropertyOptional({ example: true, default: true })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Trạng thái kích hoạt phải là true hoặc false' })
   isActive?: boolean;
 }

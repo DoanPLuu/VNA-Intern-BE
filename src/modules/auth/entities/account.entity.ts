@@ -36,9 +36,11 @@ export class Account {
   accountType: AccountType;
 
   @Column({
-    name: 'role_id', type: 'int', nullable: true })
+    name: 'role_id',
+    type: 'int',
+    nullable: true,
+  })
   roleId: number | null;
-
 
   @Column({ name: 'is_active', default: true })
   isActive: boolean;

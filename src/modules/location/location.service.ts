@@ -56,4 +56,19 @@ export class LocationService {
       })
       .getOne();
   }
+  //bonus
+  async getWardByNameAndProvince(
+    name: string,
+    provinceId: number,
+  ): Promise<Ward | null> {
+    if (!name || !provinceId) return null;
+
+    return this.wardRepo
+      .createQueryBuilder('w')
+      .where('LOWER(w.name) LIKE LOWER(:name)', {
+        name: `%${name.trim()}%`,
+      })
+      .andWhere('w.provinceId = :provinceId', { provinceId })
+      .getOne();
+  }
 }
