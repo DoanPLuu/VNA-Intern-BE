@@ -55,6 +55,11 @@ export class CompanyController {
     return this.companyService.getAllBusinessIndustry();
   }
 
+  @Get(':tax_code/company-profile')
+  getCompanyProfile(@Param('tax_code') tax_code: string) {
+    return this.companyService.getCompanyProfile(tax_code);
+  }
+
   @Delete(':taxCode')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

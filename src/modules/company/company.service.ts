@@ -57,8 +57,8 @@ export class CompanyService {
     return this.businessIndustryRepo.find({ where: { status: 'ACTIVE' } });
   }
 
-  getDetailCompany(taxCode: string) {
-    return this.companyRepo.findOne({
+  async getCompanyProfile(taxCode: string) {
+    const company = await this.companyRepo.findOne({
       where: { taxCode },
       relations: {
         businessType: true,
@@ -67,8 +67,39 @@ export class CompanyService {
         wardDkkd: true,
         provinceHdkd: true,
         wardHdkd: true,
+        account: true,
       },
     });
+    if (!company) {
+      throw Response.errorNotFound(
+        `Không tìm thấy doanh nghiệp có mã số thuế: ${taxCode}`,
+      );
+    }
+
+    return Response.success(
+      {
+        taxCode: company.taxCode,
+        companyName: company.companyName,
+        foreignCompanyName: company.foreignCompanyName,
+        licenseIssueDate: company.licenseIssueDate,
+        businessType: company.businessType?.name ?? null,
+        businessIndustry: company.businessIndustry?.name ?? null,
+        email: company.account?.email ?? null,
+        status: company.status,
+        provinceDKKD: company.provinceDkkd?.name ?? null,
+        wardDKKD: company.wardDkkd?.name ?? null,
+        addressDKKD: company.addressDkkd,
+        provinceHDKD: company.provinceHdkd?.name ?? null,
+        wardHDKD: company.wardHdkd?.name ?? null,
+        addressHDKD: company.addressHdkd,
+        representativeName: company.representativeName,
+        representativePhone: company.representativePhone,
+        businessPhone: company.businessPhone,
+        gpkdFile: company.gpkdFilePath,
+        gtkFile: company.gtkFilePath,
+      },
+      'OK',
+    );
   }
   async reinitializeCompanyPassword(
     accountType: AccountType,
