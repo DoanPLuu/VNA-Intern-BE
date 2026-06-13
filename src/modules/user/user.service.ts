@@ -162,6 +162,9 @@ export class UserService {
       .leftJoinAndSelect('account.role', 'role')
       .where('account.accountType = :accountType', {
         accountType: AccountType.SO,
+      })
+      .andWhere('account.isDeleted = :isDeleted', {
+        isDeleted: false,
       });
     if (query.fullname) {
       qb.andWhere('LOWER(user.fullName) LIKE LOWER(:fullName)', {
@@ -200,7 +203,7 @@ export class UserService {
     return {
       items: items.map((user) => ({
         id: user.id,
-        // accountId: user.accountId,
+        accountId: user.accountId,
         fullName: user.fullName,
         username: user.account.username,
         email: user.account.email,
@@ -213,7 +216,7 @@ export class UserService {
           : null,
         position: user.position,
         isActive: user.account.isActive,
-        // isDeleted: user.account.isDeleted,
+        isDeleted: user.account.isDeleted,
         createdAt: user.createdAt,
       })),
       pagination: {

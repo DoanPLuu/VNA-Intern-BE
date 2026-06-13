@@ -68,17 +68,7 @@ export class UserController {
   async getUserById(@Param('id', ParseIntPipe) id: number) {
     return this.userService.getUserById(id);
   }
-
-  @Patch(':accountId')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async updateUserByAdmin(
-    @Param('accountId', ParseIntPipe) accountId: number,
-    @Body() dto: UpdateUserDto,
-  ) {
-    return this.userService.updateUser(accountId, dto);
-  }
-  @Patch(':accountId')
+  @Patch('delete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async deleteUserByAdmin(@Body() dto: DeleteUsersDto) {
@@ -90,6 +80,15 @@ export class UserController {
   @ApiBearerAuth()
   async restoreUsers(@Body() dto: DeleteUsersDto) {
     return this.userService.restoreUsers(dto);
+  }
+  @Patch(':accountId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateUserByAdmin(
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.userService.updateUser(accountId, dto);
   }
 
   @Post()
