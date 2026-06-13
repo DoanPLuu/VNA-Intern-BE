@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
+import { Role } from '../../role/entities/role.entity';
 export enum AccountType {
   SO = 'SO',
   DOANH_NGHIEP = 'DN',
@@ -33,6 +35,11 @@ export class Account {
   })
   accountType: AccountType;
 
+  @Column({
+    name: 'role_id', type: 'int', nullable: true })
+  roleId: number | null;
+
+
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
@@ -44,4 +51,8 @@ export class Account {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ManyToOne(() => Role, { nullable: true })
+  @JoinColumn({ name: 'role_id' })
+  role: Role | null;
 }

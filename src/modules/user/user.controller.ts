@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -10,7 +12,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { CreateUserDto } from './dto/CreateUser.dto';
+import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
+import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
 interface JwtPayload {
@@ -49,10 +54,48 @@ export class UserController {
   async getUserProfileDetail(@Param('username') username: string) {
     return this.userService.getUserProfile(username);
   }
+  // Admin routes
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async listUsers(@Query() query: ListUserDto) {
     return this.userService.getAllUsers(query);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async getUserById(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.getUserById(id);
+  }
+
+  @Patch(':accountId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateUserByAdmin(
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.userService.updateUser(accountId, dto);
+  }
+  @Patch(':accountId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async deleteUserByAdmin(@Body() dto: DeleteUsersDto) {
+    return this.userService.deleteUser(dto);
+  }
+
+  @Patch('restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async restoreUsers(@Body() dto: DeleteUsersDto) {
+    return this.userService.restoreUsers(dto);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async createUser(@Body() dto: CreateUserDto) {
+    return this.userService.createUser(dto);
   }
 }

@@ -1,18 +1,21 @@
 import { Module } from '@nestjs/common';
-import { UserService } from './user.service';
-import { UserController } from './user.controller';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from '../auth/entities/account.entity';
-import { User } from './entities/user.entity';
-import { OtpCode } from './entities/otp-code.entity';
 import { LocationModule } from '../location/location.module';
+import { Role } from '../role/entities/role.entity';
+import { RoleModule } from '../role/role.module';
+import { OtpCode } from './entities/otp-code.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
-import { JwtModule } from '@nestjs/jwt';
+import { User } from './entities/user.entity';
+import { UserController } from './user.controller';
+import { UserService } from './user.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account, User, RefreshToken, OtpCode]),
+    TypeOrmModule.forFeature([Account, User, RefreshToken, OtpCode, Role]),
     LocationModule,
+    RoleModule,
     JwtModule,
   ],
   controllers: [UserController],

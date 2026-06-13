@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+
+import { Response } from '../../common/response';
 import { Account, AccountType } from '../auth/entities/account.entity';
 import { LocationService } from '../location/location.service';
+import { Role } from '../role/entities/role.entity';
+import { CreateUserDto } from './dto/CreateUser.dto';
+import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
+import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
-
 @Injectable()
 export class UserService {
   constructor(
@@ -16,6 +21,8 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly locationService: LocationService,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
   ) {}
 
   // ── Tìm kiếm ────────────────────────────────────────────────
@@ -143,6 +150,7 @@ export class UserService {
       account: accountWithoutPassword,
     };
   }
+
   // user manager //
   async getAllUsers(query: ListUserDto) {
     const page = query.page || 1;
@@ -151,6 +159,7 @@ export class UserService {
     const qb = this.userRepo
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.account', 'account')
+      .leftJoinAndSelect('account.role', 'role')
       .where('account.accountType = :accountType', {
         accountType: AccountType.SO,
       });
@@ -170,6 +179,9 @@ export class UserService {
         email: `%${query.email.trim()}%`,
       });
     }
+    if (query.roleId) {
+      qb.andWhere('account.roleId = :roleId', { roleId: query.roleId });
+    }
 
     if (query.position) {
       qb.andWhere('LOWER(user.position) LIKE LOWER(:position)', {
@@ -188,14 +200,20 @@ export class UserService {
     return {
       items: items.map((user) => ({
         id: user.id,
-        accountId: user.accountId,
+        // accountId: user.accountId,
         fullName: user.fullName,
         username: user.account.username,
         email: user.account.email,
+        role: user.account.role
+          ? {
+              id: user.account.role.id,
+              code: user.account.role.code,
+              name: user.account.role.name,
+            }
+          : null,
         position: user.position,
         isActive: user.account.isActive,
-        isDeleted: user.account.isDeleted,
-        role: null,
+        // isDeleted: user.account.isDeleted,
         createdAt: user.createdAt,
       })),
       pagination: {
@@ -205,5 +223,323 @@ export class UserService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+  async getUserById(accountId: number) {
+    const user = await this.userRepo.findOne({
+      where: { accountId },
+      relations: {
+        account: {
+          role: true,
+        },
+        province: true,
+        ward: true,
+      },
+    });
+    if (!user) {
+      throw Response.errorNotFound('Không tìm thấy người dùng');
+    }
+    return Response.success({
+      id: user.id,
+      accountId: user.accountId,
+      username: user.account.username,
+      email: user.account.email,
+      accountType: user.account.accountType,
+      isActive: user.account.isActive,
+      isDeleted: user.account.isDeleted,
+      role: user.account.role
+        ? {
+            id: user.account.role.id,
+            code: user.account.role.code,
+            name: user.account.role.name,
+          }
+        : null,
+      fullName: user.fullName,
+      dateOfBirth: user.dateOfBirth,
+      gender: user.gender,
+      position: user.position,
+      address: user.address,
+      avatarUrl: user.avatar,
+      province: user.province
+        ? {
+            id: user.province.id,
+            name: user.province.name,
+          }
+        : null,
+      ward: user.ward
+        ? {
+            id: user.ward.id,
+            name: user.ward.name,
+          }
+        : null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  }
+  async updateUser(accountId: number, dto: UpdateUserDto) {
+    const user = await this.userRepo.findOne({
+      where: { accountId },
+      relations: {
+        account: {
+          role: true,
+        },
+        province: true,
+        ward: true,
+      },
+    });
+    if (!user) {
+      throw Response.errorNotFound('Không tìm thấy người dùng');
+    }
+    const account = user.account;
+
+    if (dto.email !== undefined && dto.email !== user.account.email) {
+      if (dto.email !== null) {
+        const existingEmail = await this.accountRepo.findOne({
+          where: { email: dto.email },
+        });
+        if (existingEmail && existingEmail.id !== account.id) {
+          throw Response.errorDuplicated('Email đã được sử dụng');
+        }
+      }
+      account.email = dto.email ?? account.email;
+    }
+
+    if (dto.username !== undefined && dto.username !== user.account.username) {
+      if (dto.username !== null) {
+        const existingUsername = await this.accountRepo.findOne({
+          where: { username: dto.username },
+        });
+        if (existingUsername && existingUsername.id !== account.id) {
+          throw Response.errorDuplicated('Tên đăng nhập đã được sử dụng');
+        }
+      }
+      account.username = dto.username ?? account.username;
+    }
+
+    if (dto.isActive !== undefined) {
+      account.isActive = dto.isActive;
+    }
+    if (dto.roleId !== undefined) {
+      const role = await this.roleRepo.findOne({
+        where: { id: dto.roleId },
+      });
+
+      if (!role) {
+        throw Response.errorNotFound('Không tìm thấy vai trò');
+      }
+
+      account.roleId = role.id;
+    }
+
+    await this.accountRepo.save(account);
+    if (dto.fullName !== undefined) user.fullName = dto.fullName;
+    if (dto.dateOfBirth !== undefined)
+      user.dateOfBirth = new Date(dto.dateOfBirth);
+    if (dto.gender !== undefined) user.gender = dto.gender;
+    if (dto.position !== undefined) user.position = dto.position;
+    if (dto.address !== undefined) user.address = dto.address;
+    if (dto.avatarUrl !== undefined) user.avatar = dto.avatarUrl;
+
+    if (dto.province !== undefined) {
+      if (!dto.province.trim()) {
+        user.provinceId = null;
+      } else {
+        const province = await this.locationService.getProvinceByName(
+          dto.province,
+        );
+        if (!province) {
+          throw Response.errorNotFound('Không tìm thấy tỉnh/thành phố');
+        }
+        user.provinceId = province.id;
+      }
+    }
+
+    if (dto.ward !== undefined) {
+      if (!dto.ward.trim()) {
+        user.wardId = null;
+      } else {
+        const ward = await this.locationService.getWardByName(dto.ward);
+        if (!ward) {
+          throw Response.errorNotFound('Không tìm thấy phường/xã');
+        }
+        user.wardId = ward.id;
+      }
+    }
+
+    await this.userRepo.save(user);
+    return this.getUserById(accountId);
+  }
+  async deleteUser(dto: DeleteUsersDto) {
+    const accountIds = [...new Set(dto.accountIds)];
+    const accounts = await this.accountRepo.find({
+      where: {
+        id: In(accountIds),
+        accountType: AccountType.SO,
+      },
+      select: {
+        id: true,
+        username: true,
+        isDeleted: true,
+        isActive: true,
+      },
+    });
+    if (accounts.length !== accountIds.length) {
+      throw Response.errorNotFound('Một hoặc nhiều người dùng không tồn tại');
+    }
+    const deleteIds = accounts
+      .filter((acc) => !acc.isDeleted)
+      .map((acc) => acc.id);
+
+    if (!deleteIds.length) {
+      return Response.success(
+        {
+          affected: 0,
+          accountIds: [],
+        },
+        'Các người dùng này đã được xóa trước đó',
+      );
+    }
+    await this.accountRepo.update(
+      { id: In(deleteIds) },
+      { isDeleted: true, isActive: false },
+    );
+    return Response.success(
+      {
+        affected: deleteIds.length,
+        accountIds: deleteIds,
+      },
+      'Xóa người dùng thành công',
+    );
+  }
+  async restoreUsers(dto: DeleteUsersDto) {
+    const accountIds = [...new Set(dto.accountIds)];
+
+    const accounts = await this.accountRepo.find({
+      where: {
+        id: In(accountIds),
+        accountType: AccountType.SO,
+      },
+      select: {
+        id: true,
+        username: true,
+        isDeleted: true,
+        isActive: true,
+      },
+    });
+
+    if (accounts.length !== accountIds.length) {
+      throw Response.errorNotFound('Một hoặc nhiều người dùng không tồn tại');
+    }
+
+    const restorableIds = accounts
+      .filter((account) => account.isDeleted)
+      .map((account) => account.id);
+
+    if (!restorableIds.length) {
+      return Response.success(
+        {
+          affected: 0,
+          accountIds: [],
+        },
+        'Các người dùng đã ở trạng thái hoạt động trước đó',
+      );
+    }
+
+    await this.accountRepo.update(
+      { id: In(restorableIds) },
+      {
+        isDeleted: false,
+        isActive: true,
+      },
+    );
+
+    return Response.success(
+      {
+        affected: restorableIds.length,
+        accountIds: restorableIds,
+      },
+      'Khôi phục người dùng thành công',
+    );
+  }
+  async createUser(dto: CreateUserDto) {
+    let provinceId: number | null = null;
+    let wardId: number | null = null;
+
+    if (dto.province?.trim()) {
+      const province = await this.locationService.getProvinceByName(
+        dto.province,
+      );
+      if (!province) {
+        throw Response.errorNotFound('Không tìm thấy tỉnh/thành phố');
+      }
+      provinceId = province.id;
+    }
+
+    if (dto.ward?.trim()) {
+      const ward = await this.locationService.getWardByName(dto.ward);
+      if (!ward) {
+        throw Response.errorNotFound('Không tìm thấy phường/xã');
+      }
+      wardId = ward.id;
+    }
+
+    const createAccount = await this.accountRepo.manager.transaction(
+      async (manager) => {
+        const accountRepo = manager.getRepository(Account);
+        const userRepo = manager.getRepository(User);
+        const roleRepo = manager.getRepository(Role);
+
+        const existingUsername = await accountRepo.findOne({
+          where: { username: dto.username },
+        });
+
+        if (existingUsername) {
+          throw Response.errorDuplicated('Tên đăng nhập đã được sử dụng');
+        }
+
+        if (dto.email) {
+          const existingEmail = await accountRepo.findOne({
+            where: { email: dto.email },
+          });
+          if (existingEmail) {
+            throw Response.errorDuplicated('Email đã được sử dụng');
+          }
+        }
+
+        const role = await roleRepo.findOne({
+          where: { id: dto.roleId },
+        });
+        if (!role) {
+          throw Response.errorNotFound('Không tìm thấy vai trò');
+        }
+        const rawPassword = dto.password ?? '12345678';
+        const account = accountRepo.create({
+          username: dto.username.trim(),
+          password: await bcrypt.hash(rawPassword, 10),
+          email: dto.email,
+          accountType: AccountType.SO,
+          roleId: role.id,
+          isActive: dto.isActive ?? true,
+          isDeleted: false,
+        });
+        const savedAccount = await accountRepo.save(account);
+
+        const user = userRepo.create({
+          accountId: savedAccount.id,
+          fullName: dto.fullName.trim(),
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+          // dateOfBirth: DateUtil.formatBirthday(user.dateOfBirth),
+          gender: dto.gender ?? null,
+          position: dto.position ?? null,
+          address: dto.address ?? null,
+          avatar: dto.avatarUrl ?? null,
+          provinceId,
+          wardId,
+        });
+        await userRepo.save(user);
+
+        return savedAccount.id;
+      },
+    );
+    return this.getUserById(createAccount);
   }
 }
