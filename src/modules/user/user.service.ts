@@ -880,7 +880,14 @@ export class UserService {
         ward: true,
       },
     });
-    if (!user) {
+    // if (!user) {
+    //   throw Response.errorNotFound('Không tìm thấy người dùng');
+    // }
+    if (
+      !user ||
+      user.account.isDeleted ||
+      user.account.accountType !== AccountType.SO
+    ) {
       throw Response.errorNotFound('Không tìm thấy người dùng');
     }
     return Response.success({

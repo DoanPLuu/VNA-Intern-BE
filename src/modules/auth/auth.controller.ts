@@ -8,7 +8,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { CreateCompany } from '../company/dto/company.dto';
 import { AuthService } from './auth.service';
 import {
@@ -28,6 +31,8 @@ interface JwtPayload {
   sub: number;
   username: string;
   accountType: AccountType;
+  roleCode?: string | null;
+  permissions?: string[];
 }
 
 interface AuthenticatedRequest extends Request {
@@ -90,7 +95,6 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body() body: ConfirmNewEmailDTO,
   ) {
-    console.log(req.user.sub);
     return this.authService.confirmChangeEmail(
       req.user.sub,
       body.otp,
@@ -99,7 +103,8 @@ export class AuthController {
   }
   //user-manager
   @Post('admin/user/:accountId/change-email/request-otp')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin bước 1 - gửi OTP đổi email cho người dùng' })
   async requestChangeEmailOtpByAdmin(
@@ -113,7 +118,8 @@ export class AuthController {
   }
 
   @Post('admin/user/:accountId/change-email/verify-otp')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Admin bước 2 - xác thực OTP đổi email cho người dùng',
@@ -131,7 +137,8 @@ export class AuthController {
   }
 
   @Post('admin/user/:accountId/change-email/submit-new-email')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
   @ApiBearerAuth()
   @ApiOperation({
     summary:

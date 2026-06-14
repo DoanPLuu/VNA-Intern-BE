@@ -6,13 +6,14 @@ import { MailService } from 'src/common/mail/mail.service';
 import { OtpCode } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
 
+import { CompanyModule } from '../company/company.module';
+import { Role } from '../role/entities/role.entity';
 import { EmailChangeSession } from '../user/entities/email-change-session.entity';
 import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
-import { CompanyModule } from '../company/company.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CompanyModule } from '../company/company.module';
       OtpCode,
       User,
       EmailChangeSession,
+      Role,
     ]),
     UserModule,
     CompanyModule,

@@ -11,7 +11,9 @@ import { Request } from 'express';
 interface JwtPayload {
   sub: number;
   username: string;
-  role: string;
+  accountType: string;
+  roleCode?: string | null;
+  permissions?: string[];
 }
 
 interface AuthenticatedRequest extends Request {

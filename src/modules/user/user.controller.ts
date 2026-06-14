@@ -22,19 +22,22 @@ import type { Response as ExpressResponse, Request } from 'express';
 import type { StorageEngine } from 'multer';
 import { diskStorage, memoryStorage } from 'multer';
 import { extname, join } from 'path';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { AccountType } from '../auth/entities/account.entity';
 import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
-import { AccountType } from '../auth/entities/account.entity';
-
 interface JwtPayload {
   sub: number;
   username: string;
   accountType: AccountType;
+  roleCode?: string | null;
+  permissions?: string[];
 }
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
@@ -142,34 +145,39 @@ export class UserController {
   }
   // Admin routes
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('VIEW_USER')
   @ApiBearerAuth()
   async listUsers(@Query() query: ListUserDto) {
     return this.userService.getAllUsers(query);
   }
 
   @Patch('delete')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('DELETE_USER')
   @ApiBearerAuth()
   async deleteUserByAdmin(@Body() dto: DeleteUsersDto) {
     return this.userService.deleteUser(dto);
   }
 
   @Patch('restore')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('DELETE_USER')
   @ApiBearerAuth()
   async restoreUsers(@Body() dto: DeleteUsersDto) {
     return this.userService.restoreUsers(dto);
   }
   @Get('delete')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('DELETE_USER')
   @ApiBearerAuth()
   async listDeletedUsers(@Query() query: ListUserDto) {
     return this.userService.getDeletedUsers(query);
   }
 
   @Get('import/template')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_USER')
   @ApiBearerAuth()
   async downloadImportTemplate(@Res() res: ExpressResponse) {
     const buffer = await this.userService.generateImportTemplate();
@@ -187,7 +195,8 @@ export class UserController {
   }
 
   @Post('import/preview')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_USER')
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
@@ -208,7 +217,8 @@ export class UserController {
   }
 
   @Post('import')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_USER')
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
@@ -228,7 +238,8 @@ export class UserController {
     return this.userService.importUsers(file.buffer);
   }
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('VIEW_USER')
   @ApiBearerAuth()
   async getUserById(@Param('id', ParseIntPipe) id: number) {
     return this.userService.getUserById(id);
@@ -243,7 +254,8 @@ export class UserController {
   //   return this.userService.updateUser(accountId, dto);
   // }
   @Patch(':accountId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
@@ -274,7 +286,8 @@ export class UserController {
   //   return this.userService.createUser(dto);
   // }
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_USER')
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(

@@ -8,6 +8,7 @@ import { MailService } from 'src/common/mail/mail.service';
 import { Repository } from 'typeorm';
 import { CompanyService } from '../company/company.service';
 import { CreateCompany } from '../company/dto/company.dto';
+import { Role } from '../role/entities/role.entity';
 import { EmailChangeSession } from '../user/entities/email-change-session.entity';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
 import { RefreshToken } from '../user/entities/refresh-token.entity';
@@ -16,7 +17,6 @@ import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account, AccountType } from './entities/account.entity';
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -30,6 +30,8 @@ export class AuthService {
     private readonly otpCodeRepo: Repository<OtpCode>,
     @InjectRepository(EmailChangeSession)
     private readonly emailChangeSessionRepo: Repository<EmailChangeSession>,
+    @InjectRepository(Role)
+    private readonly roleRepo: Repository<Role>,
 
     private readonly companyService: CompanyService,
     private readonly userService: UserService,
@@ -108,10 +110,24 @@ export class AuthService {
     account: Account,
     rememberMe: boolean,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    let roleCode: string | null = null;
+    let permissions: string[] = [];
+    if (account.roleId) {
+      const role = await this.roleRepo.findOne({
+        where: { id: account.roleId },
+        relations: { permissions: true },
+      });
+
+      roleCode = role?.code ?? null;
+      permissions =
+        role?.permissions?.map((permission) => permission.code) ?? [];
+    }
     const payload: Record<string, unknown> = {
       sub: account.id,
       username: account.username,
       accountType: account.accountType,
+      roleCode,
+      permissions,
     };
 
     // ── Access Token ──────────────────────────────────────────
