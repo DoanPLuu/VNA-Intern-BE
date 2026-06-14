@@ -121,6 +121,7 @@ File busniness.sql đã cập nhật xong có thể sử dụng
 
 npm install multer
 npm install -D @types/multer
+npm install xlsx
 
 # Tạo thư mục uploads/ ở root project (cùng cấp với src/):
 

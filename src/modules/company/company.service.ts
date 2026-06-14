@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Response } from 'src/common';
+import { Response as ApiResponse } from 'src/common';
 import { LocationService } from '../location/location.service';
 import { Province } from '../location/entities/province.entity';
 import { Ward } from '../location/entities/ward.entity';
@@ -16,11 +16,47 @@ import { MailService } from 'src/common/mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { UpdateCompany } from './dto/update-company.dto';
 import { InitializeCompanyPassword } from './dto/initialize-company-password.dto';
+import * as XLSX from 'xlsx';
 
 interface JwtPayload {
   sub: number;
   username: string;
   accountType: AccountType;
+}
+function parseDate(value: string | number | undefined): Date | null {
+  if (!value) return null;
+
+  // Excel serial number (kiểu số)
+  if (typeof value === 'number') {
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  // String format: dd-MM-yyyy
+  const parts = value.split('-');
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts;
+  const date = new Date(`${year}-${month}-${day}`);
+  return isNaN(date.getTime()) ? null : date;
+}
+// Thêm interface này trên đầu service hoặc file riêng
+interface ExcelRow {
+  'Tên doanh nghiệp'?: string;
+  'Mã số thuế'?: string | number;
+  'Loại hình kinh doanh'?: string;
+  'Ngành nghề kinh doanh'?: string;
+  'Tỉnh/TP ĐKKD'?: string;
+  'Phường/Xã ĐKKD'?: string;
+  Email?: string;
+  'Ngày cấp GPKD'?: string | number;
+  'Địa chỉ ĐKKD'?: string;
+  'Tên nước ngoài'?: string;
+  'SĐT doanh nghiệp'?: string;
+  'Người đại diện'?: string;
+  'SĐT đại diện'?: string;
+  'Tỉnh/TP HĐKD'?: string;
+  'Phường/Xã HĐKD'?: string;
+  'Địa chỉ HĐKD'?: string;
 }
 
 @Injectable()
@@ -71,12 +107,12 @@ export class CompanyService {
       },
     });
     if (!company) {
-      throw Response.errorNotFound(
+      throw ApiResponse.errorNotFound(
         `Không tìm thấy doanh nghiệp có mã số thuế: ${taxCode}`,
       );
     }
 
-    return Response.success(
+    return ApiResponse.success(
       {
         taxCode: company.taxCode,
         companyName: company.companyName,
@@ -106,23 +142,73 @@ export class CompanyService {
     dto: InitializeCompanyPassword,
   ) {
     if (accountType !== AccountType.SO)
-      throw Response.errorForbidden(
+      throw ApiResponse.errorForbidden(
         'Tài khoản hiện tại không thể thực hiện chức năng này',
       );
     const account = await this.accountRepo.findOne({
       where: { username: dto.tax_code },
     });
     if (!account)
-      throw Response.errorNotFound(
+      throw ApiResponse.errorNotFound(
         `Không tìm thấy doanh nghiệp có mã số thuế ${dto.tax_code}`,
       );
     account.password = await bcrypt.hash(dto.password, 10);
     await this.accountRepo.save(account);
-    return Response.success(null, 'Khởi tạo mật khẩu thành công');
+    return ApiResponse.success(null, 'Khởi tạo mật khẩu thành công');
   }
+
+  async banCompany(tax_code: string) {
+    const company = await this.companyRepo.findOne({
+      where: { taxCode: tax_code },
+      relations: { account: true },
+    });
+    if (!company)
+      throw ApiResponse.errorNotFound(
+        `Không tìm thấy doanh nghiệp có mã số thuế: ${tax_code}`,
+      );
+    if (company.status === CompanyStatus.INACTIVE)
+      throw ApiResponse.errorBad(
+        `Doanh nghiệp ${tax_code} đã bị khóa trước đó`,
+      );
+
+    company.status = CompanyStatus.INACTIVE;
+    company.account.isActive = false;
+    await this.companyRepo.save(company);
+    await this.accountRepo.save(company.account);
+    return ApiResponse.success(
+      null,
+      `Khóa tài khoản có mã số thuế ${tax_code} thành công`,
+    );
+  }
+
+  async unbanCompany(tax_code: string) {
+    const company = await this.companyRepo.findOne({
+      where: { taxCode: tax_code },
+      relations: { account: true },
+    });
+    if (!company)
+      throw ApiResponse.errorNotFound(
+        `Không tìm thấy doanh nghiệp có mã số thuế: ${tax_code}`,
+      );
+
+    if (company.status === CompanyStatus.ACTIVE) {
+      throw ApiResponse.errorBad(
+        `Doanh nghiệp ${tax_code} đang hoạt động, không cần mở khóa`,
+      );
+    }
+    company.status = CompanyStatus.ACTIVE;
+    company.account.isActive = true;
+    await this.companyRepo.save(company);
+    await this.accountRepo.save(company.account);
+    return ApiResponse.success(
+      null,
+      `Mở khóa tài khoản có mã số thuế ${tax_code} thành công`,
+    );
+  }
+
   async deleteCompany(accountType: AccountType, tax_code: string) {
     if (accountType !== AccountType.SO)
-      throw Response.errorForbidden(
+      throw ApiResponse.errorForbidden(
         'Tài khoản hiện tại không thể thực hiện chức năng này',
       );
     const company = await this.companyRepo.findOne({
@@ -130,7 +216,7 @@ export class CompanyService {
       relations: { account: true },
     });
     if (!company)
-      throw Response.errorNotFound(
+      throw ApiResponse.errorNotFound(
         `Không tìm thấy doanh nghiệp có mã số thuế: ${tax_code}`,
       );
     const account = company.account;
@@ -138,7 +224,7 @@ export class CompanyService {
     await this.accountRepo.save(account);
     company.status = CompanyStatus.INACTIVE;
     await this.companyRepo.save(company);
-    return Response.success(null, 'Xóa Doanh nghiệp thành công');
+    return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');
   }
 
   // ── Preview (validate + trả về data đã resolve, chưa lưu) ────
@@ -157,7 +243,7 @@ export class CompanyService {
       wardHDKD,
     } = resolved;
 
-    return Response.success(
+    return ApiResponse.success(
       {
         taxCode: dto.tax_code,
         companyName: dto.business_name,
@@ -233,9 +319,96 @@ export class CompanyService {
     });
     await this.companyRepo.save(company);
 
-    return Response.success(
+    return ApiResponse.success(
       { username: savedAccount.username, password: rawPassword },
       'Thêm doanh nghiệp thành công',
+    );
+  }
+
+  async importFromFile(file: Express.Multer.File) {
+    // 1. Parse file Excel
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
+
+    if (rows.length === 0)
+      throw ApiResponse.errorBad('File Excel không có dữ liệu');
+
+    const success: string[] = [];
+    const errors: { row: number; reason: string }[] = [];
+
+    for (const [index, row] of rows.entries()) {
+      const rowNumber = index + 2; // +2 vì row 1 là header
+
+      try {
+        // 2. Map Excel → DTO
+        const dto: CreateCompany = {
+          business_name: row['Tên doanh nghiệp']?.trim() ?? '',
+          tax_code: row['Mã số thuế']?.toString().trim() ?? '',
+          business_type: row['Loại hình kinh doanh']?.trim() ?? '',
+          business_industry: row['Ngành nghề kinh doanh']?.trim() ?? '',
+          license_registration_province: row['Tỉnh/TP ĐKKD']?.trim() ?? '',
+          license_registration_ward: row['Phường/Xã ĐKKD']?.trim() ?? '',
+          email: row['Email']?.trim() ?? '',
+
+          license_issue_date: parseDate(row['Ngày cấp GPKD']),
+          license_registration_adress: row['Địa chỉ ĐKKD'] ?? undefined,
+          foreign_business_name: row['Tên nước ngoài'] ?? undefined,
+          business_phone: row['SĐT doanh nghiệp'] ?? undefined,
+          representative_name: row['Người đại diện'] ?? undefined,
+          representative_phone: row['SĐT đại diện'] ?? undefined,
+          business_operating_province: row['Tỉnh/TP HĐKD'] ?? undefined,
+          business_operating_ward: row['Phường/Xã HĐKD'] ?? undefined,
+          business_operating_adress: row['Địa chỉ HĐKD'] ?? undefined,
+
+          business_license_file_url: undefined,
+          other_document_file_url: undefined,
+        };
+
+        // 3. Validate field bắt buộc
+        if (
+          !dto.business_name ||
+          !dto.tax_code ||
+          !dto.business_type ||
+          !dto.business_industry ||
+          !dto.license_registration_province ||
+          !dto.license_registration_ward ||
+          !dto.email
+        ) {
+          errors.push({ row: rowNumber, reason: 'Thiếu thông tin bắt buộc' });
+          continue;
+        }
+
+        // 4. Kiểm tra trùng tax_code
+        const existed = await this.companyRepo.findOne({
+          where: { taxCode: dto.tax_code },
+        });
+        if (existed) {
+          errors.push({
+            row: rowNumber,
+            reason: `Mã số thuế ${dto.tax_code} đã tồn tại`,
+          });
+          continue;
+        }
+
+        // 5. Gọi lại service tạo company (tái dụng logic có sẵn)
+        await this.createCompany(dto);
+        success.push(dto.tax_code);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Lỗi không xác định';
+        errors.push({ row: rowNumber, reason: message });
+      }
+    }
+
+    return ApiResponse.success(
+      {
+        total: rows.length,
+        successCount: success.length,
+        errorCount: errors.length,
+        errors,
+      },
+      `Import hoàn tất: ${success.length} thành công, ${errors.length} lỗi`,
     );
   }
 
@@ -254,7 +427,7 @@ export class CompanyService {
       },
     });
     if (!company) {
-      throw Response.errorNotFound('Không tìm thấy doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
     // Resolve các lookup nếu dto có thay đổi, giữ nguyên giá trị cũ nếu không
@@ -264,7 +437,9 @@ export class CompanyService {
         where: { name: dto.business_type.trim() },
       });
       if (!bt)
-        throw Response.errorNotFound('Không tìm thấy loại hình doanh nghiệp');
+        throw ApiResponse.errorNotFound(
+          'Không tìm thấy loại hình doanh nghiệp',
+        );
       businessTypeName = bt.name;
     }
 
@@ -274,7 +449,7 @@ export class CompanyService {
         where: { name: dto.business_industry.trim() },
       });
       if (!bi)
-        throw Response.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
+        throw ApiResponse.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
       businessIndustryName = bi.name;
     }
 
@@ -284,7 +459,7 @@ export class CompanyService {
         dto.license_registration_province,
       );
       if (!p)
-        throw Response.errorNotFound(
+        throw ApiResponse.errorNotFound(
           'Không tìm thấy tỉnh/thành đăng ký kinh doanh',
         );
       provinceDKKDName = p.name;
@@ -296,7 +471,7 @@ export class CompanyService {
         dto.license_registration_ward,
       );
       if (!w)
-        throw Response.errorNotFound(
+        throw ApiResponse.errorNotFound(
           'Không tìm thấy phường/xã đăng ký kinh doanh',
         );
       wardDKKDName = w.name;
@@ -326,7 +501,7 @@ export class CompanyService {
       }
     }
 
-    return Response.success(
+    return ApiResponse.success(
       {
         // Giá trị sau khi merge: dto mới ghi đè, không có thì giữ cũ
         taxCode: company.taxCode,
@@ -361,7 +536,7 @@ export class CompanyService {
       relations: { account: true },
     });
     if (!company) {
-      throw Response.errorNotFound('Không tìm thấy doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
     // DN chỉ được sửa thông tin của chính mình
@@ -369,7 +544,7 @@ export class CompanyService {
       caller.accountType === AccountType.DOANH_NGHIEP &&
       company.accountId !== caller.sub
     ) {
-      throw Response.errorForbidden(
+      throw ApiResponse.errorForbidden(
         'Bạn không có quyền chỉnh sửa doanh nghiệp này',
       );
     }
@@ -380,7 +555,9 @@ export class CompanyService {
         where: { name: dto.business_type.trim() },
       });
       if (!businessType) {
-        throw Response.errorNotFound('Không tìm thấy loại hình doanh nghiệp');
+        throw ApiResponse.errorNotFound(
+          'Không tìm thấy loại hình doanh nghiệp',
+        );
       }
       company.businessTypeId = businessType.id;
     }
@@ -390,7 +567,7 @@ export class CompanyService {
         where: { name: dto.business_industry.trim() },
       });
       if (!businessIndustry) {
-        throw Response.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
+        throw ApiResponse.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
       }
       company.businessIndustryId = businessIndustry.id;
     }
@@ -400,7 +577,7 @@ export class CompanyService {
         dto.license_registration_province,
       );
       if (!province) {
-        throw Response.errorNotFound(
+        throw ApiResponse.errorNotFound(
           'Không tìm thấy tỉnh/thành đăng ký kinh doanh',
         );
       }
@@ -412,7 +589,7 @@ export class CompanyService {
         dto.license_registration_ward,
       );
       if (!ward) {
-        throw Response.errorNotFound(
+        throw ApiResponse.errorNotFound(
           'Không tìm thấy phường/xã đăng ký kinh doanh',
         );
       }
@@ -464,7 +641,7 @@ export class CompanyService {
           where: { email: dto.email },
         });
         if (existEmail && existEmail.id !== company.accountId) {
-          throw Response.errorDuplicated('Email đã tồn tại');
+          throw ApiResponse.errorDuplicated('Email đã tồn tại');
         }
         await this.accountRepo.update(
           { id: company.accountId },
@@ -476,14 +653,14 @@ export class CompanyService {
         caller.accountType === AccountType.DOANH_NGHIEP &&
         dto.email !== company.account?.email
       ) {
-        throw Response.errorBad(
+        throw ApiResponse.errorBad(
           'Vui lòng sử dụng chức năng đổi email riêng để thay đổi email',
         );
       }
     }
 
     await this.companyRepo.save(company);
-    return Response.success(null, 'Cập nhật doanh nghiệp thành công');
+    return ApiResponse.success(null, 'Cập nhật doanh nghiệp thành công');
   }
 
   async requestChangeCompanyEmail(taxCode: string, caller: JwtPayload) {
@@ -492,19 +669,19 @@ export class CompanyService {
       relations: { account: true },
     });
     if (!company) {
-      throw Response.errorNotFound('Không tìm thấy doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
     // DN chỉ được đổi email của chính mình
     if (company.accountId !== caller.sub) {
-      throw Response.errorForbidden(
+      throw ApiResponse.errorForbidden(
         'Bạn không có quyền thực hiện thao tác này',
       );
     }
 
     const account = company.account;
     if (!account?.email) {
-      throw Response.errorBad('Tài khoản chưa có email để xác thực');
+      throw ApiResponse.errorBad('Tài khoản chưa có email để xác thực');
     }
 
     // Vô hiệu hoá các OTP cũ chưa dùng
@@ -533,7 +710,7 @@ export class CompanyService {
       otp,
     );
 
-    return Response.success(
+    return ApiResponse.success(
       { email: account.email },
       'Đã gửi mã OTP đến email hiện tại',
     );
@@ -550,12 +727,12 @@ export class CompanyService {
       relations: { account: true },
     });
     if (!company) {
-      throw Response.errorNotFound('Không tìm thấy doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
     // DN chỉ được đổi email của chính mình
     if (company.accountId !== caller.sub) {
-      throw Response.errorForbidden(
+      throw ApiResponse.errorForbidden(
         'Bạn không có quyền thực hiện thao tác này',
       );
     }
@@ -565,7 +742,7 @@ export class CompanyService {
       where: { email: newEmail },
     });
     if (emailExists && emailExists.id !== company.accountId) {
-      throw Response.errorDuplicated(
+      throw ApiResponse.errorDuplicated(
         'Email này đã được đăng ký bởi tài khoản khác',
       );
     }
@@ -581,10 +758,10 @@ export class CompanyService {
       order: { createdAt: 'DESC' },
     });
     if (!otpRecord) {
-      throw Response.errorBad('Mã OTP không hợp lệ');
+      throw ApiResponse.errorBad('Mã OTP không hợp lệ');
     }
     if (otpRecord.expiresAt.getTime() < Date.now()) {
-      throw Response.errorBad('Mã OTP đã hết hạn');
+      throw ApiResponse.errorBad('Mã OTP đã hết hạn');
     }
 
     // Update email mới
@@ -595,7 +772,7 @@ export class CompanyService {
       { email: newEmail },
     );
 
-    return Response.success(null, 'Thay đổi email thành công');
+    return ApiResponse.success(null, 'Thay đổi email thành công');
   }
 
   // REGISTER DN──────────────────────────────────────────
@@ -664,7 +841,7 @@ export class CompanyService {
   async activateCompany(accountId: number) {
     const company = await this.companyRepo.findOne({ where: { accountId } });
     if (!company) {
-      throw Response.errorNotFound('Không tìm thấy doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
     await this.accountRepo.update({ id: accountId }, { isActive: true });
@@ -673,7 +850,7 @@ export class CompanyService {
       { status: CompanyStatus.ACTIVE },
     );
 
-    return Response.success(null, 'Đăng ký doanh nghiệp thành công');
+    return ApiResponse.success(null, 'Đăng ký doanh nghiệp thành công');
   }
 
   // ── Private helpers ──────────────────────────────────────────
@@ -686,7 +863,7 @@ export class CompanyService {
       where: { taxCode: dto.tax_code },
     });
     if (existCompany) {
-      throw Response.errorDuplicated('Mã số thuế đã tồn tại');
+      throw ApiResponse.errorDuplicated('Mã số thuế đã tồn tại');
     }
 
     if (dto.email) {
@@ -694,7 +871,7 @@ export class CompanyService {
         where: { email: dto.email },
       });
       if (existAccount) {
-        throw Response.errorDuplicated('Email đã tồn tại');
+        throw ApiResponse.errorDuplicated('Email đã tồn tại');
       }
     }
   }
@@ -715,21 +892,21 @@ export class CompanyService {
       where: { name: dto.business_type.trim() },
     });
     if (!businessType) {
-      throw Response.errorNotFound('Không tìm thấy loại hình doanh nghiệp');
+      throw ApiResponse.errorNotFound('Không tìm thấy loại hình doanh nghiệp');
     }
 
     const businessIndustry = await this.businessIndustryRepo.findOne({
       where: { name: dto.business_industry.trim() },
     });
     if (!businessIndustry) {
-      throw Response.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
+      throw ApiResponse.errorNotFound('Không tìm thấy ngành nghề kinh doanh');
     }
 
     const provinceDKKD = await this.locationService.getProvinceByName(
       dto.license_registration_province,
     );
     if (!provinceDKKD) {
-      throw Response.errorNotFound(
+      throw ApiResponse.errorNotFound(
         'Không tìm thấy tỉnh/thành đăng ký kinh doanh',
       );
     }
@@ -738,7 +915,7 @@ export class CompanyService {
       dto.license_registration_ward,
     );
     if (!wardDKKD) {
-      throw Response.errorNotFound(
+      throw ApiResponse.errorNotFound(
         'Không tìm thấy phường/xã đăng ký kinh doanh',
       );
     }

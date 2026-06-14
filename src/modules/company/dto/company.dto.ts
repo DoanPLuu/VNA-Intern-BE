@@ -65,13 +65,13 @@ export class CreateCompany {
   @ApiProperty({ example: '192 Nguyễn Trãi' })
   @IsOptional()
   @IsString()
-  license_registration_adress: string;
+  license_registration_adress?: string | null;
 
   // Tên doanh nghiệp bằng tiếng nước ngoài
   @ApiProperty({ example: 'GNA Group' })
   @IsOptional()
   @IsString()
-  foreign_business_name: string;
+  foreign_business_name?: string | null;
 
   @ApiProperty({ example: 'gnagroup@gmail.com' })
   @IsNotEmpty({
