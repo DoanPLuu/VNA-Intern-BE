@@ -9,17 +9,18 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
-import type { Request } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 
+import type { Response as ExpressResponse, Request } from 'express';
 import type { StorageEngine } from 'multer';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { extname, join } from 'path';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { CreateUserDto } from './dto/CreateUser.dto';
@@ -28,6 +29,7 @@ import { ListUserDto } from './dto/listUser.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
+
 interface JwtPayload {
   sub: number;
   username: string;
@@ -36,6 +38,36 @@ interface JwtPayload {
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
 }
+interface UploadedExcelFile {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}
+const excelFileFilter = (
+  _req: Request,
+  file: UploadedExcelFile,
+  cb: (error: Error | null, acceptFile: boolean) => void,
+) => {
+  const allowedMimeTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ];
+
+  const fileExt = extname(file.originalname).toLowerCase();
+
+  if (
+    !allowedMimeTypes.includes(file.mimetype) &&
+    !['.xlsx', '.xls'].includes(fileExt)
+  ) {
+    return cb(
+      new BadRequestException('File import phải có định dạng .xlsx hoặc .xls'),
+      false,
+    );
+  }
+
+  cb(null, true);
+};
 
 interface UploadedAvatarFile {
   filename: string;
@@ -133,6 +165,66 @@ export class UserController {
   @ApiBearerAuth()
   async listDeletedUsers(@Query() query: ListUserDto) {
     return this.userService.getDeletedUsers(query);
+  }
+
+  @Get('import/template')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async downloadImportTemplate(@Res() res: ExpressResponse) {
+    const buffer = await this.userService.generateImportTemplate();
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="mau-import-nguoi-dung.xlsx"',
+    );
+
+    res.send(buffer);
+  }
+
+  @Post('import/preview')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      fileFilter: excelFileFilter,
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+    }),
+  )
+  async previewImportUsers(@UploadedFile() file?: UploadedExcelFile) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file Excel để kiểm tra');
+    }
+
+    return this.userService.previewImportUsers(file.buffer);
+  }
+
+  @Post('import')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      fileFilter: excelFileFilter,
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+    }),
+  )
+  async importUsers(@UploadedFile() file?: UploadedExcelFile) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file Excel để import');
+    }
+
+    return this.userService.importUsers(file.buffer);
   }
   @Get(':id')
   @UseGuards(JwtAuthGuard)

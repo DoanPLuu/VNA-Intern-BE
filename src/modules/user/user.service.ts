@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { In, Repository } from 'typeorm';
 
+import { Workbook } from 'exceljs';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { Response } from '../../common/response';
@@ -15,6 +16,35 @@ import { ListUserDto } from './dto/listUser.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
+
+type ImportUserRow = {
+  rowNumber: number;
+  username: string;
+  password?: string;
+  email: string;
+  fullName: string;
+  dateOfBirth?: string;
+  gender?: string;
+  position?: string;
+  roleCode: string;
+  province?: string;
+  ward?: string;
+  address?: string;
+  isActive: boolean;
+};
+type ExcelLoadInput = Parameters<Workbook['xlsx']['load']>[0];
+
+type PreparedImportUserRow = ImportUserRow & {
+  roleId: number;
+  provinceId: number | null;
+  wardId: number | null;
+  errors: string[];
+};
+
+type ImportPreviewItem = ImportUserRow & {
+  isValid: boolean;
+  errors: string[];
+};
 @Injectable()
 export class UserService {
   constructor(
@@ -169,6 +199,518 @@ export class UserService {
   }
 
   // user manager //
+
+  private normalizeExcelValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return String(value).trim();
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as {
+        text?: string;
+        result?: string | number | boolean | Date | null;
+        richText?: Array<{ text: string }>;
+      };
+
+      if (typeof obj.text === 'string') {
+        return obj.text.trim();
+      }
+
+      if (Array.isArray(obj.richText)) {
+        return obj.richText
+          .map((item) => item.text)
+          .join('')
+          .trim();
+      }
+
+      if (obj.result instanceof Date) {
+        return obj.result.toISOString().slice(0, 10);
+      }
+
+      if (
+        typeof obj.result === 'string' ||
+        typeof obj.result === 'number' ||
+        typeof obj.result === 'boolean'
+      ) {
+        return String(obj.result).trim();
+      }
+    }
+
+    return '';
+  }
+
+  private normalizeBooleanValue(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+
+    return ['true', '1', 'yes', 'y', 'co', 'có'].includes(normalized);
+  }
+
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private isValidUsername(username: string): boolean {
+    return (
+      /^[a-zA-Z0-9_-]+$/.test(username) &&
+      username.length >= 3 &&
+      username.length <= 100
+    );
+  }
+
+  private isValidDateString(dateString: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return false;
+    }
+
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    return date.toISOString().slice(0, 10) === dateString;
+  }
+
+  private isFutureDate(dateString: string): boolean {
+    const inputDate = new Date(dateString);
+    const today = new Date();
+
+    inputDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return inputDate.getTime() > today.getTime();
+  }
+
+  private async parseImportFile(fileBuffer: Buffer): Promise<ImportUserRow[]> {
+    const workbook = new Workbook();
+    await workbook.xlsx.load(fileBuffer as unknown as ExcelLoadInput);
+
+    const worksheet = workbook.getWorksheet('Users') ?? workbook.worksheets[0];
+    if (!worksheet) {
+      throw Response.errorBad('File Excel không có sheet dữ liệu');
+    }
+
+    const rows: ImportUserRow[] = [];
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+
+      const username = this.normalizeExcelValue(row.getCell(1).value);
+      const email = this.normalizeExcelValue(row.getCell(2).value);
+      const fullName = this.normalizeExcelValue(row.getCell(3).value);
+      const dateOfBirth = this.normalizeExcelValue(row.getCell(4).value);
+      const gender = this.normalizeExcelValue(row.getCell(5).value);
+      const position = this.normalizeExcelValue(row.getCell(6).value);
+      const roleCode = this.normalizeExcelValue(
+        row.getCell(7).value,
+      ).toUpperCase();
+      const province = this.normalizeExcelValue(row.getCell(8).value);
+      const ward = this.normalizeExcelValue(row.getCell(9).value);
+      const address = this.normalizeExcelValue(row.getCell(10).value);
+      const isActiveRaw = this.normalizeExcelValue(row.getCell(11).value);
+
+      const isEmptyRow = [
+        username,
+        email,
+        fullName,
+        dateOfBirth,
+        gender,
+        position,
+        roleCode,
+        province,
+        ward,
+        address,
+        isActiveRaw,
+      ].every((item) => !item);
+
+      if (isEmptyRow) {
+        continue;
+      }
+
+      rows.push({
+        rowNumber,
+        username,
+
+        email,
+        fullName,
+        dateOfBirth: dateOfBirth || undefined,
+        gender: gender || undefined,
+        position: position || undefined,
+        roleCode,
+        province: province || undefined,
+        ward: ward || undefined,
+        address: address || undefined,
+        isActive: isActiveRaw ? this.normalizeBooleanValue(isActiveRaw) : true,
+      });
+    }
+
+    if (!rows.length) {
+      throw Response.errorBad('File Excel không có dữ liệu để import');
+    }
+
+    return rows;
+  }
+
+  private async validateImportRows(
+    rows: ImportUserRow[],
+  ): Promise<PreparedImportUserRow[]> {
+    const roleCodes = [
+      ...new Set(rows.map((row) => row.roleCode).filter(Boolean)),
+    ];
+    const roles = roleCodes.length
+      ? await this.roleRepo.find({
+          where: {
+            code: In(roleCodes),
+          },
+        })
+      : [];
+
+    const roleMap = new Map(
+      roles.map((role) => [role.code.toUpperCase(), role]),
+    );
+
+    const usernames = [
+      ...new Set(rows.map((row) => row.username).filter(Boolean)),
+    ];
+    const emails = [...new Set(rows.map((row) => row.email).filter(Boolean))];
+
+    const existingAccounts = await this.accountRepo.find({
+      where: [
+        ...(usernames.length ? [{ username: In(usernames) }] : []),
+        ...(emails.length ? [{ email: In(emails) }] : []),
+      ],
+      select: {
+        username: true,
+        email: true,
+      },
+    });
+
+    const existingUsernameSet = new Set(
+      existingAccounts
+        .map((account) => account.username?.trim())
+        .filter(Boolean),
+    );
+
+    const existingEmailSet = new Set(
+      existingAccounts.map((account) => account.email?.trim()).filter(Boolean),
+    );
+
+    const usernameCounter = new Map<string, number>();
+    const emailCounter = new Map<string, number>();
+
+    for (const row of rows) {
+      if (row.username) {
+        usernameCounter.set(
+          row.username,
+          (usernameCounter.get(row.username) ?? 0) + 1,
+        );
+      }
+      if (row.email) {
+        emailCounter.set(row.email, (emailCounter.get(row.email) ?? 0) + 1);
+      }
+    }
+
+    const preparedRows: PreparedImportUserRow[] = [];
+
+    for (const row of rows) {
+      const errors: string[] = [];
+
+      if (!row.username) {
+        errors.push('Tên đăng nhập không được để trống');
+      } else if (!this.isValidUsername(row.username)) {
+        errors.push(
+          'Tên đăng nhập chỉ được chứa chữ cái, số, dấu gạch dưới (_) và dấu gạch ngang (-), đồng thời phải từ 3 đến 100 ký tự',
+        );
+      }
+
+      if (!row.email) {
+        errors.push('Email không được để trống');
+      } else if (!this.isValidEmail(row.email)) {
+        errors.push('Email không đúng định dạng');
+      }
+
+      if (!row.fullName) {
+        errors.push('Họ và tên không được để trống');
+      }
+
+      if (!row.roleCode) {
+        errors.push('Mã vai trò không được để trống');
+      }
+
+      if (row.password && row.password.length < 8) {
+        errors.push('Mật khẩu phải có ít nhất 8 ký tự');
+      }
+
+      if (row.dateOfBirth) {
+        if (!this.isValidDateString(row.dateOfBirth)) {
+          errors.push('Ngày sinh không đúng định dạng YYYY-MM-DD');
+        } else if (this.isFutureDate(row.dateOfBirth)) {
+          errors.push('Ngày sinh không được lớn hơn ngày hiện tại');
+        }
+      }
+
+      if (row.ward && !row.province) {
+        errors.push('Có phường/xã thì bắt buộc phải có tỉnh/thành phố');
+      }
+
+      if (row.username && (usernameCounter.get(row.username) ?? 0) > 1) {
+        errors.push('Tên đăng nhập bị trùng trong file import');
+      }
+
+      if (row.email && (emailCounter.get(row.email) ?? 0) > 1) {
+        errors.push('Email bị trùng trong file import');
+      }
+
+      if (row.username && existingUsernameSet.has(row.username)) {
+        errors.push('Tên đăng nhập đã tồn tại trong hệ thống');
+      }
+
+      if (row.email && existingEmailSet.has(row.email)) {
+        errors.push('Email đã tồn tại trong hệ thống');
+      }
+
+      const role = row.roleCode
+        ? roleMap.get(row.roleCode.toUpperCase())
+        : null;
+      if (row.roleCode && !role) {
+        errors.push('Mã vai trò không tồn tại');
+      }
+
+      let provinceId: number | null = null;
+      let wardId: number | null = null;
+
+      if (row.province) {
+        const province = await this.locationService.getProvinceByName(
+          row.province,
+        );
+        if (!province) {
+          errors.push('Không tìm thấy tỉnh/thành phố');
+        } else {
+          provinceId = province.id;
+        }
+      }
+
+      if (row.ward) {
+        if (!provinceId) {
+          errors.push('Vui lòng chọn tỉnh/thành phố trước khi chọn phường/xã');
+        } else {
+          const ward = await this.locationService.getWardByNameAndProvince(
+            row.ward,
+            provinceId,
+          );
+
+          if (!ward) {
+            errors.push('Phường/xã không thuộc tỉnh/thành phố đã chọn');
+          } else {
+            wardId = ward.id;
+          }
+        }
+      }
+
+      preparedRows.push({
+        ...row,
+        roleId: role?.id ?? 0,
+        provinceId,
+        wardId,
+        errors,
+      });
+    }
+
+    return preparedRows;
+  }
+
+  async generateImportTemplate(): Promise<Buffer> {
+    const workbook = new Workbook();
+
+    const dataSheet = workbook.addWorksheet('Users');
+    dataSheet.columns = [
+      { header: 'username', key: 'username', width: 20 },
+      { header: 'password', key: 'password', width: 20 },
+      { header: 'email', key: 'email', width: 30 },
+      { header: 'fullName', key: 'fullName', width: 25 },
+      { header: 'dateOfBirth', key: 'dateOfBirth', width: 15 },
+      { header: 'gender', key: 'gender', width: 15 },
+      { header: 'position', key: 'position', width: 20 },
+      { header: 'roleCode', key: 'roleCode', width: 20 },
+      { header: 'province', key: 'province', width: 30 },
+      { header: 'ward', key: 'ward', width: 30 },
+      { header: 'address', key: 'address', width: 40 },
+      { header: 'isActive', key: 'isActive', width: 12 },
+    ];
+
+    dataSheet.addRow({
+      username: 'admin-vna-01',
+      password: '12345678',
+      email: 'admin01@gmail.com',
+      fullName: 'Nguyen Van A',
+      dateOfBirth: '1995-06-01',
+      gender: 'Nam',
+      position: 'Chuyen vien',
+      roleCode: 'ADMIN',
+      province: 'Thành phố Hồ Chí Minh',
+      ward: 'Phường Gò Vấp',
+      address: '123 Nguyen Trai',
+      isActive: 'true',
+    });
+
+    const guideSheet = workbook.addWorksheet('HuongDan');
+    guideSheet.columns = [
+      { header: 'Cột', key: 'column', width: 20 },
+      { header: 'Bắt buộc', key: 'required', width: 12 },
+      { header: 'Mô tả', key: 'description', width: 60 },
+      { header: 'Ví dụ', key: 'example', width: 30 },
+    ];
+
+    guideSheet.addRows([
+      [
+        'username',
+        'Có',
+        'Tên đăng nhập duy nhất, 3-100 ký tự, chỉ gồm chữ/số/_/-',
+        'admin-vna-01',
+      ],
+      ['password', 'Không', 'Bỏ trống sẽ dùng mặc định 12345678', '12345678'],
+      ['email', 'Có', 'Email duy nhất trong hệ thống', 'admin01@gmail.com'],
+      ['fullName', 'Có', 'Họ và tên người dùng', 'Nguyen Van A'],
+      ['dateOfBirth', 'Không', 'Định dạng YYYY-MM-DD', '1995-06-01'],
+      ['gender', 'Không', 'Giới tính', 'Nam'],
+      ['position', 'Không', 'Chức danh', 'Chuyen vien'],
+      ['roleCode', 'Có', 'Mã vai trò đã tồn tại trong bảng roles', 'ADMIN'],
+      ['province', 'Không', 'Tên tỉnh/thành phố', 'Thành phố Hồ Chí Minh'],
+      [
+        'ward',
+        'Không',
+        'Tên phường/xã, phải thuộc tỉnh đã chọn',
+        'Phường Gò Vấp',
+      ],
+      ['address', 'Không', 'Địa chỉ chi tiết', '123 Nguyen Trai'],
+      ['isActive', 'Không', 'true/false, bỏ trống mặc định true', 'true'],
+    ]);
+
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
+  async previewImportUsers(fileBuffer: Buffer) {
+    const rows = await this.parseImportFile(fileBuffer);
+    const preparedRows = await this.validateImportRows(rows);
+
+    const items: ImportPreviewItem[] = preparedRows.map((row) => ({
+      rowNumber: row.rowNumber,
+      username: row.username,
+      email: row.email,
+      fullName: row.fullName,
+      dateOfBirth: row.dateOfBirth,
+      gender: row.gender,
+      position: row.position,
+      roleCode: row.roleCode,
+      province: row.province,
+      ward: row.ward,
+      address: row.address,
+      isActive: row.isActive,
+      isValid: row.errors.length === 0,
+      errors: row.errors,
+    }));
+
+    const validCount = items.filter((item) => item.isValid).length;
+    const invalidCount = items.length - validCount;
+
+    return Response.success(
+      {
+        summary: {
+          totalRows: items.length,
+          validRows: validCount,
+          invalidRows: invalidCount,
+          canImport: invalidCount === 0,
+        },
+        items,
+      },
+      'Kiểm tra file import thành công',
+    );
+  }
+
+  async importUsers(fileBuffer: Buffer) {
+    const rows = await this.parseImportFile(fileBuffer);
+    const preparedRows = await this.validateImportRows(rows);
+
+    const invalidRows = preparedRows
+      .filter((row) => row.errors.length > 0)
+      .map((row) => ({
+        rowNumber: row.rowNumber,
+        username: row.username,
+        email: row.email,
+        fullName: row.fullName,
+        roleCode: row.roleCode,
+        errors: row.errors,
+      }));
+
+    if (invalidRows.length > 0) {
+      throw Response.errorBad('File import có dữ liệu không hợp lệ', {
+        totalRows: preparedRows.length,
+        invalidRows: invalidRows.length,
+        items: invalidRows,
+      });
+    }
+
+    const createdAccountIds = await this.accountRepo.manager.transaction(
+      async (manager) => {
+        const accountRepo = manager.getRepository(Account);
+        const userRepo = manager.getRepository(User);
+
+        const createdIds: number[] = [];
+
+        for (const row of preparedRows) {
+          const rawPassword = row.password ?? '12345678';
+
+          const account = accountRepo.create({
+            username: row.username.trim(),
+            password: await bcrypt.hash(rawPassword, 10),
+            email: row.email.trim(),
+            accountType: AccountType.SO,
+            roleId: row.roleId,
+            isActive: row.isActive,
+            isDeleted: false,
+          });
+
+          const savedAccount = await accountRepo.save(account);
+
+          const user = userRepo.create({
+            accountId: savedAccount.id,
+            fullName: row.fullName.trim(),
+            dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
+            gender: row.gender ?? null,
+            position: row.position ?? null,
+            address: row.address ?? null,
+            avatar: null,
+            provinceId: row.provinceId,
+            wardId: row.wardId,
+          });
+
+          await userRepo.save(user);
+          createdIds.push(savedAccount.id);
+        }
+
+        return createdIds;
+      },
+    );
+
+    return Response.success(
+      {
+        affected: createdAccountIds.length,
+        accountIds: createdAccountIds,
+      },
+      'Import người dùng thành công',
+    );
+  }
   async getAllUsers(query: ListUserDto) {
     const page = query.page || 1;
     const limit = query.limit || 10;
