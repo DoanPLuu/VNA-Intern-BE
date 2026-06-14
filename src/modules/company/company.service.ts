@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { UpdateCompany } from './dto/update-company.dto';
 import { InitializeCompanyPassword } from './dto/initialize-company-password.dto';
 import * as XLSX from 'xlsx';
+import { DateUtil } from 'src/common/utils/date.util';
 
 interface JwtPayload {
   sub: number;
@@ -117,7 +118,7 @@ export class CompanyService {
         taxCode: company.taxCode,
         companyName: company.companyName,
         foreignCompanyName: company.foreignCompanyName,
-        licenseIssueDate: company.licenseIssueDate,
+        licenseIssueDate: DateUtil.formatBirthday(company.licenseIssueDate),
         businessType: company.businessType?.name ?? null,
         businessIndustry: company.businessIndustry?.name ?? null,
         email: company.account?.email ?? null,
@@ -248,7 +249,7 @@ export class CompanyService {
         taxCode: dto.tax_code,
         companyName: dto.business_name,
         foreignCompanyName: dto.foreign_business_name,
-        licenseIssueDate: dto.license_issue_date,
+        licenseIssueDate: DateUtil.formatBirthday(dto.license_issue_date),
         businessType: businessType.name,
         businessIndustry: businessIndustry.name,
         email: dto.email,
@@ -508,7 +509,9 @@ export class CompanyService {
         companyName: dto.business_name ?? company.companyName,
         foreignCompanyName:
           dto.foreign_business_name ?? company.foreignCompanyName,
-        licenseIssueDate: dto.license_issue_date ?? company.licenseIssueDate,
+        licenseIssueDate:
+          DateUtil.formatBirthday(dto.license_issue_date) ??
+          DateUtil.formatBirthday(company.licenseIssueDate),
         businessType: businessTypeName,
         businessIndustry: businessIndustryName,
         email: dto.email ?? company.account?.email,

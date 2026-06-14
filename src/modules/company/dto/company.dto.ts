@@ -7,6 +7,8 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
+import { IsNotFutureDate } from 'src/common/validators/is-not-future-date.decorator';
+import dayjs from 'src/common/utils/dayjs';
 
 export class CreateCompany {
   @ApiProperty({ example: 'Công ty TNHH Môi trường xanh' })
@@ -40,11 +42,18 @@ export class CreateCompany {
   business_industry: string;
 
   // Ngày cấp GPKD
-  @ApiProperty({ example: '09-01-2020' })
-  @Transform(({ value }: { value: string }) => (value ? new Date(value) : null))
+  @ApiProperty({ example: '09/01/2020' })
+  @Transform(({ value }: { value: string | null | undefined }) => {
+    if (!value) return null;
+    const date = dayjs(value, ['DD/MM/YYYY', 'DD-MM-YYYY'], true);
+    return date.isValid() ? date.toDate() : 'INVALID_DATE';
+  })
   @IsOptional()
-  @IsDate()
-  license_issue_date: Date | null;
+  @IsDate({ message: 'Ngày cấp GPKD không đúng định dạng dd/MM/yyyy' })
+  @IsNotFutureDate({
+    message: 'Ngày cấp GPKD không được lớn hơn ngày hiện tại',
+  })
+  license_issue_date?: Date | null;
 
   // Tỉnh/Thành phố đăng ký kinh doanh
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })

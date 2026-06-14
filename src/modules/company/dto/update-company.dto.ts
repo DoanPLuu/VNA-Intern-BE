@@ -7,6 +7,8 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
+import dayjs from 'src/common/utils/dayjs';
+import { IsNotFutureDate } from 'src/common/validators/is-not-future-date.decorator';
 
 export class UpdateCompany {
   // ── Thông tin doanh nghiệp ──────────────────────────────────
@@ -35,8 +37,15 @@ export class UpdateCompany {
 
   @ApiProperty({ example: '09-01-2020' })
   @IsOptional()
-  @Transform(({ value }: { value: string }) => (value ? new Date(value) : null))
-  @IsDate()
+  @Transform(({ value }: { value: string | null | undefined }) => {
+    if (!value) return null;
+    const date = dayjs(value, ['DD/MM/YYYY', 'DD-MM-YYYY'], true);
+    return date.isValid() ? date.toDate() : 'INVALID_DATE';
+  })
+  @IsDate({ message: 'Ngày cấp GPKD không đúng định dạng dd/MM/yyyy' })
+  @IsNotFutureDate({
+    message: 'Ngày cấp GPKD không được lớn hơn ngày hiện tại',
+  })
   license_issue_date?: Date | null;
 
   // ── Địa chỉ ĐKKD ────────────────────────────────────────────
