@@ -9,6 +9,13 @@ import {
   Min,
 } from 'class-validator';
 import { IsNotFutureDate } from 'src/common/validators/is-not-future-date.decorator';
+const toBoolean = ({ value }: { value: unknown }) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  return value === true || value === 'true';
+};
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ example: 'Nguyen Van A' })
@@ -61,6 +68,7 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(toBoolean)
   @IsBoolean({ message: 'Trạng thái kích hoạt phải là true hoặc false' })
   isActive?: boolean;
 }
