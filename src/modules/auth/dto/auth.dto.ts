@@ -111,3 +111,13 @@ export class AdminSubmitNewEmailDTO {
   @IsString({ message: 'Phiên đổi email không hợp lệ' })
   sessionId: string;
 }
+export class ConfirmRegisterCompanyDTO {
+  @ApiProperty({ example: 'gnagroup@gmail.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+}

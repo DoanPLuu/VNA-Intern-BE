@@ -12,6 +12,7 @@ import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
+import { CompanyModule } from '../company/company.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Account } from './entities/account.entity';
       EmailChangeSession,
     ]),
     UserModule,
+    CompanyModule,
     JwtModule.register({}),
   ],
   controllers: [AuthController],

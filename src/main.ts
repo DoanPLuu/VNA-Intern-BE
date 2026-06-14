@@ -5,10 +5,15 @@ import * as express from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/service.error.filter';
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
+import { NestExpressApplication } from '@nestjs/platform-express';
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads',
+  });
   app.enableCors({
     origin: ['http://localhost:3000'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',

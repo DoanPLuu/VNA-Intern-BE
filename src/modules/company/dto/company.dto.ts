@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
@@ -8,14 +9,15 @@ import {
 } from 'class-validator';
 
 export class CreateCompany {
-  @ApiProperty()
+  @ApiProperty({ example: 'Công ty TNHH Môi trường xanh' })
+  @Transform(({ value }: { value: string }) => value?.trim())
   @IsNotEmpty({ message: 'Tên doanh nghiệp không được để trống' })
-  @Matches(/^[a-zA-Z0-9\s]+$/, {
+  @Matches(/^[\p{L}\p{N}\s]+$/u, {
     message: 'Không được chứa ký tự đặc biệt',
   })
   business_name: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '1234567890' })
   @IsNotEmpty({ message: 'Mã số thuế không được để trống' })
   @Matches(/^(\d{10}|\d{10}-\d{3})$/, {
     message:
@@ -23,14 +25,14 @@ export class CreateCompany {
   })
   tax_code: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Công ty TNHH một thành viên' })
   @IsNotEmpty({
     message: 'Bắt buộc phải chọn loại hình kinh doanh cho doanh nghiệp',
   })
   @IsString()
   business_type: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Trồng rừng và chăm sóc rừng' })
   @IsNotEmpty({
     message: 'Bắt buộc phải chọn ngành nghề kinh doanh chính cho doanh nghiệp',
   })
@@ -38,13 +40,14 @@ export class CreateCompany {
   business_industry: string;
 
   // Ngày cấp GPKD
-  @ApiProperty()
+  @ApiProperty({ example: '09-01-2020' })
+  @Transform(({ value }: { value: string }) => (value ? new Date(value) : null))
   @IsOptional()
   @IsDate()
-  license_issue_date: Date;
+  license_issue_date: Date | null;
 
   // Tỉnh/Thành phố đăng ký kinh doanh
-  @ApiProperty()
+  @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsNotEmpty({
     message: 'Bắt buộc phải cung cấp tỉnh/thành phố đăng ký kinh doanh',
   })
@@ -52,25 +55,25 @@ export class CreateCompany {
   license_registration_province: string;
 
   // Phường/Xã đăng ký kinh doanh
-  @ApiProperty()
+  @ApiProperty({ example: 'Phường Chợ Lớn' })
   @IsNotEmpty({
     message: 'Bắt buộc phải cung cấp phường xã đăng ký kinh doanh',
   })
   @IsString()
   license_registration_ward: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '192 Nguyễn Trãi' })
   @IsOptional()
   @IsString()
-  license_registration_adress: string;
+  license_registration_adress?: string | null;
 
   // Tên doanh nghiệp bằng tiếng nước ngoài
-  @ApiProperty()
+  @ApiProperty({ example: 'GNA Group' })
   @IsOptional()
   @IsString()
-  foreign_business_name: string;
+  foreign_business_name?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'gnagroup@gmail.com' })
   @IsNotEmpty({
     message:
       'Bắt buộc phải cung cấp email để có thể sử dụng chức năng quên mật khẩu hoặc thay đổi email',
@@ -80,33 +83,33 @@ export class CreateCompany {
   })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '0912345678' })
   @IsOptional()
   @IsString()
   business_phone?: string | null;
 
   // Tỉnh/thành phố hoạt động kinh doanh
-  @ApiProperty()
+  @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsOptional()
   @IsString()
   business_operating_province?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Phường Chợ Lớn' })
   @IsOptional()
   @IsString()
   business_operating_ward?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ example: '192 Nguyễn Trãi' })
   @IsOptional()
   @IsString()
   business_operating_adress?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Trần Thị B' })
   @IsOptional()
   @IsString()
   representative_name?: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ example: '0819231432' })
   @IsOptional()
   @IsString()
   representative_phone?: string | null;

@@ -29,11 +29,12 @@ import { ListUserDto } from './dto/listUser.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
+import { AccountType } from '../auth/entities/account.entity';
 
 interface JwtPayload {
   sub: number;
   username: string;
-  role: string;
+  accountType: AccountType;
 }
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;

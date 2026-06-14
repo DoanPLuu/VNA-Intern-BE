@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LocationModule } from './modules/location/location.module';
 import { RoleModule } from './modules/role/role.module';
 import { CompanyModule } from './modules/company/company.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CompanyModule } from './modules/company/company.module';
     LocationModule,
     RoleModule,
     CompanyModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
