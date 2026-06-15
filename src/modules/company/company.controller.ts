@@ -169,6 +169,15 @@ export class CompanyController {
     return this.companyService.deleteCompany(req.user.accountType, taxCode);
   }
 
+  @Patch(':taxCode/restore')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('DELETE_COMPANY')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Khôi phục doanh nghiệp đã xóa' })
+  async restoreCompany(@Param('taxCode') taxCode: string) {
+    return this.companyService.restoreCompany(taxCode);
+  }
+
   @Post(':taxCode/preview-update')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
