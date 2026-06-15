@@ -1,9 +1,10 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Min,
@@ -23,8 +24,8 @@ export class UpdateUserDto {
   @IsString({ message: 'Họ và tên phải là chuỗi ký tự' })
   fullName?: string;
 
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
+  @ApiProperty({ example: 1 })
+  @IsNotEmpty({ message: 'Vai trò không được để trống' })
   @Transform(({ value }) => Number(value))
   @IsInt({ message: 'Vai trò phải là các trường hợp đã tồn tại' })
   @Min(1, { message: 'Vai trò phải lớn hơn hoặc bằng 1' })

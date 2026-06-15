@@ -52,6 +52,7 @@ export class CreateUserDto {
 
   @ApiProperty({ example: 1 })
   @Transform(({ value }) => Number(value))
+  @IsNotEmpty({ message: 'Vai trò không được để trống' })
   @IsInt({ message: 'Vai trò phải là số nguyên' })
   @Min(1, { message: 'Vai trò phải lớn hơn hoặc bằng 1' })
   roleId: number;
