@@ -14,6 +14,7 @@ import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
 import { ResetUserPasswordDto } from './dto/ResetUserPasswordDto';
+import { ToggleUserActiveDto } from './dto/ToggleUserActive.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
@@ -1324,6 +1325,43 @@ export class UserService {
         username: account.username,
       },
       'Khởi tạo mật khẩu thành công',
+    );
+  }
+  async toggleUserActive(accountId: number, dto: ToggleUserActiveDto) {
+    const user = await this.userRepo.findOne({
+      where: { accountId },
+      relations: {
+        account: true,
+      },
+    });
+
+    if (!user || !user.account) {
+      throw Response.errorNotFound('Không tìm thấy người dùng');
+    }
+
+    if (user.account.accountType !== AccountType.SO) {
+      throw Response.errorBad(
+        'Chỉ được cập nhật trạng thái tài khoản người dùng nội bộ',
+      );
+    }
+
+    if (user.account.isDeleted) {
+      throw Response.errorBad(
+        'Không thể kích hoạt hoặc khóa tài khoản đã bị xóa mềm',
+      );
+    }
+
+    user.account.isActive = dto.isActive;
+    await this.accountRepo.save(user.account);
+
+    return Response.success(
+      {
+        accountId: user.accountId,
+        isActive: user.account.isActive,
+      },
+      dto.isActive
+        ? 'Kích hoạt tài khoản thành công'
+        : 'Khóa tài khoản thành công',
     );
   }
 }

@@ -30,6 +30,7 @@ import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
 import { ResetUserPasswordDto } from './dto/ResetUserPasswordDto';
+import { ToggleUserActiveDto } from './dto/ToggleUserActive.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
@@ -319,5 +320,15 @@ export class UserController {
     @Body() dto: ResetUserPasswordDto,
   ) {
     return this.userService.resetUserPasswordByAdmin(accountId, dto);
+  }
+  @Patch(':accountId/active')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
+  @ApiBearerAuth()
+  async toggleUserActive(
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: ToggleUserActiveDto,
+  ) {
+    return this.userService.toggleUserActive(accountId, dto);
   }
 }
