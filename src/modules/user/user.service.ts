@@ -201,6 +201,40 @@ export class UserService {
 
   // user manager //
 
+  private formatDateToDdMmYyyy(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  private normalizeExcelDateValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (value instanceof Date) {
+      return this.formatDateToDdMmYyyy(value);
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as {
+        text?: string;
+        result?: string | number | boolean | Date | null;
+        richText?: Array<{ text: string }>;
+      };
+
+      if (obj.result instanceof Date) {
+        return this.formatDateToDdMmYyyy(obj.result);
+      }
+
+      if (typeof obj.text === 'string') {
+        return obj.text.trim();
+      }
+    }
+
+    return this.normalizeExcelValue(value);
+  }
   private normalizeExcelValue(value: unknown): string {
     if (value === null || value === undefined) {
       return '';
@@ -283,8 +317,9 @@ export class UserService {
     return date.toISOString().slice(0, 10) === dateString;
   }
 
-  private isFutureDate(dateString: string): boolean {
-    const inputDate = new Date(dateString);
+  private isFutureImportDate(dateString: string): boolean {
+    const [day, month, year] = dateString.split('-').map(Number);
+    const inputDate = new Date(year, month - 1, day);
     const today = new Date();
 
     inputDate.setHours(0, 0, 0, 0);
@@ -308,21 +343,23 @@ export class UserService {
       const row = worksheet.getRow(rowNumber);
 
       const username = this.normalizeExcelValue(row.getCell(1).value);
-      const email = this.normalizeExcelValue(row.getCell(2).value);
-      const fullName = this.normalizeExcelValue(row.getCell(3).value);
-      const dateOfBirth = this.normalizeExcelValue(row.getCell(4).value);
-      const gender = this.normalizeExcelValue(row.getCell(5).value);
-      const position = this.normalizeExcelValue(row.getCell(6).value);
+      const password = this.normalizeExcelValue(row.getCell(2).value);
+      const email = this.normalizeExcelValue(row.getCell(3).value);
+      const fullName = this.normalizeExcelValue(row.getCell(4).value);
+      const dateOfBirth = this.normalizeExcelDateValue(row.getCell(5).value);
+      const gender = this.normalizeExcelValue(row.getCell(6).value);
+      const position = this.normalizeExcelValue(row.getCell(7).value);
       const roleCode = this.normalizeExcelValue(
-        row.getCell(7).value,
+        row.getCell(8).value,
       ).toUpperCase();
-      const province = this.normalizeExcelValue(row.getCell(8).value);
-      const ward = this.normalizeExcelValue(row.getCell(9).value);
-      const address = this.normalizeExcelValue(row.getCell(10).value);
-      const isActiveRaw = this.normalizeExcelValue(row.getCell(11).value);
+      const province = this.normalizeExcelValue(row.getCell(9).value);
+      const ward = this.normalizeExcelValue(row.getCell(10).value);
+      const address = this.normalizeExcelValue(row.getCell(11).value);
+      const isActiveRaw = this.normalizeExcelValue(row.getCell(12).value);
 
       const isEmptyRow = [
         username,
+        password,
         email,
         fullName,
         dateOfBirth,
@@ -342,7 +379,7 @@ export class UserService {
       rows.push({
         rowNumber,
         username,
-
+        password: password || undefined,
         email,
         fullName,
         dateOfBirth: dateOfBirth || undefined,
@@ -454,9 +491,9 @@ export class UserService {
       }
 
       if (row.dateOfBirth) {
-        if (!this.isValidDateString(row.dateOfBirth)) {
-          errors.push('Ngày sinh không đúng định dạng YYYY-MM-DD');
-        } else if (this.isFutureDate(row.dateOfBirth)) {
+        if (!this.isValidImportDate(row.dateOfBirth)) {
+          errors.push('Ngày sinh không đúng định dạng DD-MM-YYYY');
+        } else if (this.isFutureImportDate(row.dateOfBirth)) {
           errors.push('Ngày sinh không được lớn hơn ngày hiện tại');
         }
       }
@@ -555,7 +592,7 @@ export class UserService {
       password: '12345678',
       email: 'admin01@gmail.com',
       fullName: 'Nguyen Van A',
-      dateOfBirth: '1995-06-01',
+      dateOfBirth: '15-06-1995',
       gender: 'Nam',
       position: 'Chuyen vien',
       roleCode: 'ADMIN',
@@ -583,7 +620,7 @@ export class UserService {
       ['password', 'Không', 'Bỏ trống sẽ dùng mặc định 12345678', '12345678'],
       ['email', 'Có', 'Email duy nhất trong hệ thống', 'admin01@gmail.com'],
       ['fullName', 'Có', 'Họ và tên người dùng', 'Nguyen Van A'],
-      ['dateOfBirth', 'Không', 'Định dạng YYYY-MM-DD', '1995-06-01'],
+      ['dateOfBirth', 'Không', 'Định dạng DD-MM-YYYY', '15-06-1995'],
       ['gender', 'Không', 'Giới tính', 'Nam'],
       ['position', 'Không', 'Chức danh', 'Chuyen vien'],
       ['roleCode', 'Có', 'Mã vai trò đã tồn tại trong bảng roles', 'ADMIN'],
@@ -600,7 +637,24 @@ export class UserService {
 
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
+  private convertDdMmYyyyToIso(dateString: string): string {
+    const [day, month, year] = dateString.split('-');
+    return `${year}-${month}-${day}`;
+  }
+  private isValidImportDate(dateString: string): boolean {
+    if (!/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
+      return false;
+    }
 
+    const [day, month, year] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
+  }
   async previewImportUsers(fileBuffer: Buffer) {
     const rows = await this.parseImportFile(fileBuffer);
     const preparedRows = await this.validateImportRows(rows);
@@ -687,7 +741,9 @@ export class UserService {
           const user = userRepo.create({
             accountId: savedAccount.id,
             fullName: row.fullName.trim(),
-            dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
+            dateOfBirth: row.dateOfBirth
+              ? new Date(this.convertDdMmYyyyToIso(row.dateOfBirth))
+              : null,
             gender: row.gender ?? null,
             position: row.position ?? null,
             address: row.address ?? null,
