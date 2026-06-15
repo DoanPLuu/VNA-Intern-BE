@@ -13,6 +13,7 @@ import { Role } from '../role/entities/role.entity';
 import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
+import { ResetUserPasswordDto } from './dto/ResetUserPasswordDto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
@@ -1232,5 +1233,41 @@ export class UserService {
       throw error;
     }
     return this.getUserById(createAccount);
+  }
+  async resetUserPasswordByAdmin(accountId: number, dto: ResetUserPasswordDto) {
+    const account = await this.accountRepo.findOne({
+      where: { id: accountId },
+    });
+
+    if (!account) {
+      throw Response.errorNotFound('Không tìm thấy tài khoản người dùng');
+    }
+
+    if (account.accountType !== AccountType.SO) {
+      throw Response.errorBad(
+        'Chỉ được khởi tạo mật khẩu cho tài khoản người dùng nội bộ',
+      );
+    }
+
+    if (account.isDeleted) {
+      throw Response.errorBad(
+        'Không thể khởi tạo mật khẩu cho tài khoản đã bị xóa',
+      );
+    }
+
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.accountRepo.update(
+      { id: accountId },
+      { password: newPasswordHash },
+    );
+
+    return Response.success(
+      {
+        accountId: account.id,
+        username: account.username,
+      },
+      'Khởi tạo mật khẩu thành công',
+    );
   }
 }

@@ -29,6 +29,7 @@ import { AccountType } from '../auth/entities/account.entity';
 import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
+import { ResetUserPasswordDto } from './dto/ResetUserPasswordDto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { UserService } from './user.service';
@@ -308,5 +309,15 @@ export class UserController {
       : undefined;
 
     return this.userService.createUser(dto, avatarPath);
+  }
+  @Patch(':accountId/reset-password')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_USER')
+  @ApiBearerAuth()
+  async resetUserPasswordByAdmin(
+    @Param('accountId', ParseIntPipe) accountId: number,
+    @Body() dto: ResetUserPasswordDto,
+  ) {
+    return this.userService.resetUserPasswordByAdmin(accountId, dto);
   }
 }
