@@ -542,6 +542,12 @@ export class CompanyService {
       throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
     }
 
+    if (company.status === CompanyStatus.INACTIVE) {
+      throw ApiResponse.errorBad(
+        'Doanh nghiệp đang bị khóa, không thể cập nhật thông tin',
+      );
+    }
+
     // DN chỉ được sửa thông tin của chính mình
     if (
       caller.accountType === AccountType.DOANH_NGHIEP &&
