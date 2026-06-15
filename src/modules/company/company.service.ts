@@ -82,7 +82,13 @@ export class CompanyService {
 
   getAllCompanies() {
     return this.companyRepo.find({
-      where: { status: In([CompanyStatus.ACTIVE, CompanyStatus.PENDING]) },
+      where: {
+        status: In([
+          CompanyStatus.ACTIVE,
+          CompanyStatus.PENDING,
+          CompanyStatus.INACTIVE,
+        ]),
+      },
     });
   }
 
@@ -221,11 +227,39 @@ export class CompanyService {
         `Không tìm thấy doanh nghiệp có mã số thuế: ${tax_code}`,
       );
     const account = company.account;
+    if (company.account.isDeleted)
+      throw ApiResponse.errorBad(`Doanh nghiệp ${tax_code} đã bị xóa`);
     account.isDeleted = true;
     await this.accountRepo.save(account);
     company.status = CompanyStatus.INACTIVE;
     await this.companyRepo.save(company);
     return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');
+  }
+
+  async restoreCompany(tax_code: string) {
+    const company = await this.companyRepo.findOne({
+      where: { taxCode: tax_code },
+      relations: { account: true },
+    });
+    if (!company)
+      throw ApiResponse.errorNotFound(
+        `Không tìm thấy doanh nghiệp có mã số thuế: ${tax_code}`,
+      );
+
+    if (!company.account.isDeleted)
+      throw ApiResponse.errorBad(`Doanh nghiệp ${tax_code} chưa bị xóa`);
+
+    company.account.isDeleted = false;
+    company.account.isActive = true;
+    company.status = CompanyStatus.ACTIVE;
+
+    await this.accountRepo.save(company.account);
+    await this.companyRepo.save(company);
+
+    return ApiResponse.success(
+      null,
+      `Khôi phục doanh nghiệp ${tax_code} thành công`,
+    );
   }
 
   // ── Preview (validate + trả về data đã resolve, chưa lưu) ────
@@ -540,6 +574,12 @@ export class CompanyService {
     });
     if (!company) {
       throw ApiResponse.errorNotFound('Không tìm thấy doanh nghiệp');
+    }
+
+    if (company.status === CompanyStatus.INACTIVE) {
+      throw ApiResponse.errorBad(
+        'Doanh nghiệp đang bị khóa, không thể cập nhật thông tin',
+      );
     }
 
     // DN chỉ được sửa thông tin của chính mình

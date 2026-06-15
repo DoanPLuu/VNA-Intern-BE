@@ -7,10 +7,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { AccountType } from 'src/modules/auth/entities/account.entity';
 interface JwtPayload {
   sub: number;
   username: string;
-  accountType: string;
+  accountType: AccountType;
   roleCode?: string | null;
   permissions?: string[];
 }
@@ -35,6 +36,11 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    // Bổ sung luồng xử lý cho DN
+    const user = request.user;
+    if (user?.accountType === AccountType.DOANH_NGHIEP) {
+      return true;
+    }
     const userPermissions = request.user?.permissions ?? [];
 
     const hasAllPermissions = requiredPermissions.every((permission) =>
