@@ -94,6 +94,16 @@ export class CompanyService {
     });
   }
 
+  // Lấy danh sách company cho việc xóa company và restore
+  async getDeletedCompanies() {
+    return await this.companyRepo.find({
+      relations: { account: true },
+      where: {
+        status: CompanyStatus.DELETED,
+      },
+    });
+  }
+
   getAllBusinessType() {
     return this.businessTypeRepo.find({ where: { status: 'ACTIVE' } });
   }
@@ -233,7 +243,7 @@ export class CompanyService {
       throw ApiResponse.errorBad(`Doanh nghiệp ${tax_code} đã bị xóa`);
     account.isDeleted = true;
     await this.accountRepo.save(account);
-    company.status = CompanyStatus.INACTIVE;
+    company.status = CompanyStatus.DELETED;
     await this.companyRepo.save(company);
     return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');
   }

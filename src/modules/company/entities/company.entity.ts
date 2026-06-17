@@ -18,6 +18,7 @@ export enum CompanyStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
   PENDING = 'PENDING',
+  DELETED = 'DELETED',
 }
 
 @Entity('companies')

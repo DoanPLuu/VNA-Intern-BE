@@ -120,6 +120,14 @@ export class CompanyController {
     return this.companyService.importFromFile(file);
   }
 
+  @Get('deleted-companies')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @RequirePermissions('VIEW_COMPANY')
+  getDeletedCompanies() {
+    return this.companyService.getDeletedCompanies();
+  }
+
   // ── Cần auth, dùng chung SO/DN ───────────────────────────────
 
   @Get('companies')
