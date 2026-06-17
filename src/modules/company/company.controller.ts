@@ -29,7 +29,6 @@ import {
 import { InitializeCompanyPassword } from './dto/initialize-company-password.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response as ExpressResponse } from 'express';
-import * as XLSX from 'xlsx';
 import { Response as ApiResponse } from 'src/common';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
@@ -46,82 +45,32 @@ interface AuthenticatedRequest extends Request {
 @Controller('company')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
+
+  // ── Public / không cần auth ──────────────────────────────────
+
   @Post('/preview-company')
   preview(@Body() dto: CreateCompany) {
     return this.companyService.previewCompany(dto);
-  }
-  @Post('/create-company')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @ApiBearerAuth()
-  @RequirePermissions('CREATE_COMPANY')
-  create(@Body() dto: CreateCompany) {
-    return this.companyService.createCompany(dto);
-  }
-
-  @Get('companies')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @ApiBearerAuth()
-  @RequirePermissions('VIEW_COMPANY')
-  getAllCompanies() {
-    return this.companyService.getAllCompanies();
   }
 
   @Get('/business-type')
   getAllBusinessType() {
     return this.companyService.getAllBusinessType();
   }
+
   @Get('/business-industry')
   getAllBusinessIndustry() {
     return this.companyService.getAllBusinessIndustry();
   }
 
+  // ── Import / Template (đặt TRƯỚC route động ':tax_code') ────
+
   @Get('import/template')
-  downloadTemplate(@Res() res: ExpressResponse): void {
-    const headers = [
-      'Tên doanh nghiệp',
-      'Mã số thuế',
-      'Loại hình kinh doanh',
-      'Ngành nghề kinh doanh',
-      'Tỉnh/TP ĐKKD',
-      'Phường/Xã ĐKKD',
-      'Email',
-      'Ngày cấp GPKD',
-      'Địa chỉ ĐKKD',
-      'Tên nước ngoài',
-      'SĐT doanh nghiệp',
-      'Người đại diện',
-      'SĐT đại diện',
-      'Tỉnh/TP HĐKD',
-      'Phường/Xã HĐKD',
-      'Địa chỉ HĐKD',
-    ];
-
-    const exampleRow = [
-      'Công ty TNHH Môi trường xanh',
-      '1234567890',
-      'Công ty TNHH một thành viên',
-      'Trồng rừng và chăm sóc rừng',
-      'Tp Hồ Chí Minh',
-      'Phường Chợ Lớn',
-      'gnagroup@gmail.com',
-      '09-01-2020',
-      '192 Nguyễn Trãi',
-      'GNA Group',
-      '0912345678',
-      'Trần Thị B',
-      '0819231432',
-      'Tp Hồ Chí Minh',
-      'Phường Bình Thọ',
-      '192 Nguyễn Trãi',
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách doanh nghiệp');
-    const buffer = XLSX.write(wb, {
-      type: 'buffer',
-      bookType: 'xlsx',
-    }) as Buffer;
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tải file Excel mẫu để import doanh nghiệp' })
+  async downloadTemplate(@Res() res: ExpressResponse) {
+    const buffer = await this.companyService.generateImportCompanyTemplate();
 
     res.setHeader(
       'Content-Disposition',
@@ -134,9 +83,124 @@ export class CompanyController {
     res.send(buffer);
   }
 
+  @Post('import/preview')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_COMPANY')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Kiểm tra file Excel trước khi import' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async previewImportFromFile(@UploadedFile() file?: Express.Multer.File) {
+    if (!file)
+      throw ApiResponse.errorBad('Vui lòng chọn file Excel để kiểm tra');
+    return this.companyService.previewImportCompanies(file.buffer);
+  }
+
+  @Post('import')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CREATE_COMPANY')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Import doanh nghiệp từ file Excel' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async importFromFile(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw ApiResponse.errorBad('Vui lòng upload file Excel');
+    return this.companyService.importFromFile(file);
+  }
+
+  // ── Cần auth, dùng chung SO/DN ───────────────────────────────
+
+  @Get('companies')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @RequirePermissions('VIEW_COMPANY')
+  getAllCompanies() {
+    return this.companyService.getAllCompanies();
+  }
+
   @Get(':tax_code/company-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   getCompanyProfile(@Param('tax_code') tax_code: string) {
     return this.companyService.getCompanyProfile(tax_code);
+  }
+
+  @Post(':taxCode/preview-update')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Preview thông tin doanh nghiệp sau khi chỉnh sửa' })
+  async previewUpdateCompany(
+    @Param('taxCode') taxCode: string,
+    @Body() dto: UpdateCompany,
+  ) {
+    return this.companyService.previewUpdateCompany(taxCode, dto);
+  }
+
+  @Patch(':taxCode')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('UPDATE_COMPANY')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cập nhật thông tin doanh nghiệp' })
+  async updateCompany(
+    @Param('taxCode') taxCode: string,
+    @Body() dto: UpdateCompany,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.updateCompany(taxCode, dto, req.user);
+  }
+
+  // ── Chỉ DN ───────────────────────────────────────────────────
+
+  @Post(':taxCode/change-email/request')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Bước 1: Gửi OTP đến email cũ để xác nhận đổi email DN',
+  })
+  async requestChangeCompanyEmail(
+    @Param('taxCode') taxCode: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.requestChangeCompanyEmail(taxCode, req.user);
+  }
+
+  @Post(':taxCode/change-email/confirm')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Bước 2: Xác nhận OTP và cập nhật email mới' })
+  async confirmChangeCompanyEmail(
+    @Param('taxCode') taxCode: string,
+    @Body() dto: ConfirmChangeCompanyEmailDTO,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.confirmChangeCompanyEmail(
+      taxCode,
+      dto.otp,
+      dto.newEmail,
+      req.user,
+    );
+  }
+
+  // ── Chỉ SO ───────────────────────────────────────────────────
+
+  @Post('/create-company')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @RequirePermissions('CREATE_COMPANY')
+  create(@Body() dto: CreateCompany) {
+    return this.companyService.createCompany(dto);
   }
 
   @Post(':taxCode/ban-company')
@@ -178,58 +242,6 @@ export class CompanyController {
     return this.companyService.restoreCompany(taxCode);
   }
 
-  @Post(':taxCode/preview-update')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Preview thông tin doanh nghiệp sau khi chỉnh sửa' })
-  async previewUpdateCompany(
-    @Param('taxCode') taxCode: string,
-    @Body() dto: UpdateCompany,
-  ) {
-    return this.companyService.previewUpdateCompany(taxCode, dto);
-  }
-  @Patch(':taxCode')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('UPDATE_COMPANY')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cập nhật thông tin doanh nghiệp' })
-  async updateCompany(
-    @Param('taxCode') taxCode: string,
-    @Body() dto: UpdateCompany,
-    @Req() req: AuthenticatedRequest,
-  ) {
-    return this.companyService.updateCompany(taxCode, dto, req.user);
-  }
-  @Post(':taxCode/change-email/request')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Bước 1: Gửi OTP đến email cũ để xác nhận đổi email DN',
-  })
-  async requestChangeCompanyEmail(
-    @Param('taxCode') taxCode: string,
-    @Req() req: AuthenticatedRequest,
-  ) {
-    return this.companyService.requestChangeCompanyEmail(taxCode, req.user);
-  }
-
-  @Post(':taxCode/change-email/confirm')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Bước 2: Xác nhận OTP và cập nhật email mới' })
-  async confirmChangeCompanyEmail(
-    @Param('taxCode') taxCode: string,
-    @Body() dto: ConfirmChangeCompanyEmailDTO,
-    @Req() req: AuthenticatedRequest,
-  ) {
-    return this.companyService.confirmChangeCompanyEmail(
-      taxCode,
-      dto.otp,
-      dto.newEmail,
-      req.user,
-    );
-  }
-
   @Post('reinitialize-password')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('UPDATE_COMPANY')
@@ -243,25 +255,5 @@ export class CompanyController {
       req.user.accountType,
       dto,
     );
-  }
-
-  // Upload file import
-  @Post('import')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('CREATE_COMPANY')
-  @ApiBearerAuth()
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('file'))
-  async importFromFile(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw ApiResponse.errorBad('Vui lòng upload file Excel');
-    return this.companyService.importFromFile(file);
   }
 }
