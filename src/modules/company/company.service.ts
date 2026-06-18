@@ -91,6 +91,9 @@ export class CompanyService {
           CompanyStatus.INACTIVE,
         ]),
       },
+      order: {
+        createdAt: 'DESC',
+      },
     });
   }
 
@@ -101,6 +104,9 @@ export class CompanyService {
       where: {
         status: CompanyStatus.DELETED,
       },
+      order: {
+        updatedAt: 'DESC',
+      },
     });
   }
 
@@ -109,7 +115,10 @@ export class CompanyService {
   }
 
   getAllBusinessIndustry() {
-    return this.businessIndustryRepo.find({ where: { status: 'ACTIVE' } });
+    return this.businessIndustryRepo.find({
+      select: { code: true, name: true },
+      where: { status: 'ACTIVE', level: 'Cấp 4' },
+    });
   }
 
   async getCompanyProfile(taxCode: string) {
