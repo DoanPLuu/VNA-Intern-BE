@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ReportStatistic } from './report-statistic.entity';
-import { AccidentCause } from '../../category/entities/accident-cause.entity';
+import { InjuryType } from '../../category/entities/injury-type.entity';
 import { InjuryFactor } from '../../category/entities/injury-factor.entity';
 import { Profession } from '../../category/entities/profession.entity';
 
@@ -22,8 +22,8 @@ export class ReportAccidentDetail {
   reportStatisticId: number;
 
   // ----- Phân loại theo danh mục cố định -----
-  @Column({ name: 'accident_cause_id', nullable: true })
-  accidentCauseId: number | null;
+  @Column({ name: 'injury_type_id', nullable: true })
+  InjuryTypeId: number | null;
 
   @Column({ name: 'injury_factor_id', nullable: true })
   injuryFactorId: number | null;
@@ -124,9 +124,9 @@ export class ReportAccidentDetail {
   @JoinColumn({ name: 'report_statistic_id' })
   reportStatistic: ReportStatistic;
 
-  @ManyToOne(() => AccidentCause)
-  @JoinColumn({ name: 'accident_cause_id' })
-  accidentCause: AccidentCause;
+  @ManyToOne(() => InjuryType)
+  @JoinColumn({ name: 'injury_type_id' })
+  accidentCause: InjuryType;
 
   @ManyToOne(() => InjuryFactor)
   @JoinColumn({ name: 'injury_factor_id' })
