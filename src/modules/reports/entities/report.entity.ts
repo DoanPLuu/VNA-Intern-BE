@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { ReportPeriod } from './report-period.entity';
@@ -25,6 +26,7 @@ export enum ReportStatus {
 }
 
 @Entity('reports')
+@Unique(['companyId', 'reportPeriodId'])
 export class Report {
   @PrimaryGeneratedColumn()
   id: number;

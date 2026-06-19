@@ -5,9 +5,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Profession } from './entities/profession.entity';
 import { InjuryFactor } from './entities/injury-factor.entity';
 import { InjuryType } from './entities/injury-type.entity';
+import { AccidentCause } from './entities/account_cause.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Profession, InjuryFactor, InjuryType])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Profession,
+      InjuryFactor,
+      InjuryType,
+      AccidentCause,
+    ]),
+  ],
   controllers: [CategoryController],
   providers: [CategoryService],
   exports: [CategoryService],

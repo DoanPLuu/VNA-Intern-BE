@@ -212,3 +212,99 @@ INSERT INTO professions (code, name, level, status, parent_id) VALUES
   ('9611', 'Người nhặt rác, thu gom phế liệu', 'Cấp 4', true, (SELECT id FROM professions WHERE code = '961')),
   ('9629', 'Lao động giản đơn khác chưa được phân vào đâu', 'Cấp 4', true, (SELECT id FROM professions WHERE code = '962'))
 ON CONFLICT (code) DO UPDATE SET level = EXCLUDED.level, parent_id = EXCLUDED.parent_id;
+
+
+-- =================================================================
+-- Seed: injury_type (Danh mục loại chấn thương - 2 cấp)
+--       injury_factors (Yếu tố gây chấn thương - 1 cấp)
+-- =================================================================
+
+-- injury_type: Cấp 1 (nhóm chấn thương)
+INSERT INTO injury_type (code, name, level, status, parent_id) VALUES
+  ('01', 'Đầu, mặt, cổ', 'Cấp 1', true, NULL),
+  ('02', 'Ngực, bụng', 'Cấp 1', true, NULL),
+  ('03', 'Phần chi trên', 'Cấp 1', true, NULL),
+  ('04', 'Phần chi dưới', 'Cấp 1', true, NULL),
+  ('05', 'Bỏng', 'Cấp 1', true, NULL),
+  ('06', 'Nhiễm độc', 'Cấp 1', true, NULL)
+ON CONFLICT (code) DO UPDATE SET level = EXCLUDED.level, parent_id = EXCLUDED.parent_id;
+
+-- injury_type: Cấp 2 (chi tiết chấn thương)
+INSERT INTO injury_type (code, name, level, status, parent_id) VALUES
+  ('011', 'Các chấn thương sọ não hở hoặc kín', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('012', 'Dập não', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('013', 'Máu tụ trong sọ', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('014', 'Vỡ sọ', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('015', 'Bị lột da đầu', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('016', 'Tổn thương đồng tử mắt', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('017', 'Vỡ và dập các xương cuốn của sọ', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('018', 'Vỡ các xương hàm mặt', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('019', 'Tổn thương phần mềm rộng ở mặt', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('0110', 'Bị thương vào cổ, tác hại đến thanh quản và thực quản', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '01')),
+  ('021', 'Tổn thương lồng ngực tác hại đến cơ quan bên trong', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('022', 'Hội chứng chèn ép trung thất', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('023', 'Dập lồng ngực hay lồng ngực bị ép nặng', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('024', 'Gãy xương sườn', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('025', 'Tổn thương phần mềm rộng ở bụng', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('026', 'Bị thương và dập mạnh ở bụng tác hại tới các cơ quan bên trong', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('027', 'Thủng, vỡ tạng trong ổ bụng', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('028', 'Đụng, dập, ảnh hưởng tới vận động của xương sống', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('029', 'Vỡ, trật xương sống', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('0210', 'Vỡ xương chậu', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('0211', 'Tổn thương xương chậu ảnh hưởng lớn tới vận động của thân và chi dưới', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('0212', 'Tổn thương cơ quan sinh dục', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '02')),
+  ('031', 'Tổn thương xương, thần kinh, mạch máu ảnh hưởng tới vận động của chi trên', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '03')),
+  ('032', 'Tổn thương phần mềm rộng khắp ở các chi trên', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '03')),
+  ('033', 'Tổn thương ở vai, cánh tay, bàn tay, cổ tay làm hại đến các gân', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '03')),
+  ('034', 'Dập, gẫy, vỡ nát các xương đòn, bả vai, cánh tay, cẳng tay, cổ tay, bàn tay, đốt ngón tay', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '03')),
+  ('035', 'Trật, trẹo các khớp xương', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '03')),
+  ('041', 'Chấn thương ở các chi dưới gây tổn thương mạch máu, thần kinh, xương ảnh hưởng tới vận động', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '04')),
+  ('042', 'Bị thương rộng khắp ở chi dưới', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '04')),
+  ('043', 'Gẫy và dập xương hông, khớp hông, đùi, đầu gối, ống, cổ chân, bàn chân và các ngón', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '04')),
+  ('051', 'Bỏng độ 3', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('052', 'Bỏng do nhiệt rộng khắp độ 2, độ 3', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('053', 'Bỏng nặng do hóa chất độ 2, độ 3', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('054', 'Bỏng điện nặng', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('055', 'Bị bỏng lạnh độ 3', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('056', 'Bị bỏng lạnh rộng khắp độ 2, độ 3', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '05')),
+  ('061', 'Nhiễm độc ô xít các bon nặng (ngất, mê sảng, rối loạn dinh dưỡng da, sưng phổi...)', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06')),
+  ('062', 'Nhiễm độc ô xít nitơ nặng (sưng phổi, viêm phế quản...)', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06')),
+  ('063', 'Nhiễm độc hydro sunfua nặng (kích thích mạnh, động kinh, sưng phổi, mê sảng)', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06')),
+  ('064', 'Nhiễm độc ô xít các bon níc nồng độ cao (ngừng thở, chảy máu, ngất)', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06')),
+  ('065', 'Nhiễm độc cấp các loại hóa chất bảo vệ thực vật', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06')),
+  ('066', 'Nhiễm độc các loại hóa chất độc khác thuộc danh mục phải khai báo, đăng ký', 'Cấp 2', true, (SELECT id FROM injury_type WHERE code = '06'))
+ON CONFLICT (code) DO UPDATE SET level = EXCLUDED.level, parent_id = EXCLUDED.parent_id;
+
+-- injury_factors: Yếu tố gây chấn thương (1 cấp, không có parent)
+INSERT INTO injury_factors (code, name, status) VALUES
+  ('1', 'Điện (bao gồm điện cao thế)', true),
+  ('2', 'Phóng xạ', true),
+  ('3', 'Do phương tiện vận tải', true),
+  ('4', 'Do thiết bị chịu áp lực', true),
+  ('5', 'Do thiết bị nâng, thang máy', true),
+  ('6', 'Nổ vật liệu nổ', true),
+  ('7', 'Máy móc, thiết bị cán, cuốn, kẹp, cắt, va đập', true),
+  ('8', 'Bỏng hoá chất', true),
+  ('9', 'Ngộ độc hoá chất', true),
+  ('10', 'Cháy nổ xăng dầu', true),
+  ('11', 'Sập đổ công trình', true),
+  ('12', 'Sập lò, sập đất đá trong xây dựng, khai thác, thăm dò khoáng sản', true),
+  ('13', 'Cây hoặc vật đổ, đè, rơi', true),
+  ('14', 'Ngã cao', true),
+  ('15', 'Chết đuối', true),
+  ('16', 'Các loại khác', true)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO accident_causes (code, name, cause_group, status) VALUES
+  -- Do người sử dụng lao động (mã 1-6)
+  ('1', 'Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn', 'EMPLOYER', true),
+  ('2', 'Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt', 'EMPLOYER', true),
+  ('3', 'Tổ chức lao động không hợp lý', 'EMPLOYER', true),
+  ('4', 'Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ', 'EMPLOYER', true),
+  ('5', 'Không có quy trình an toàn hoặc biện pháp làm việc an toàn', 'EMPLOYER', true),
+  ('6', 'Điều kiện làm việc không tốt', 'EMPLOYER', true),
+  -- Do người lao động (mã 7-9)
+  ('7', 'Quy phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn', 'EMPLOYEE', true),
+  ('8', 'Không sử dụng phương tiện bảo vệ cá nhân', 'EMPLOYEE', true),
+  ('9', 'Khách quan khó tránh / Nguyên nhân chưa kể đến', 'OTHER', true)
+ON CONFLICT (code) DO NOTHING;
