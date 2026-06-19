@@ -32,16 +32,8 @@ export class Report {
   @Column({ name: 'company_id' })
   companyId: number;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
-  company: Company;
-
   @Column({ name: 'report_period_id' })
   reportPeriodId: number;
-
-  @ManyToOne(() => ReportPeriod)
-  @JoinColumn({ name: 'report_period_id' })
-  reportPeriod: ReportPeriod;
 
   @Column({
     name: 'report_type',
@@ -80,10 +72,6 @@ export class Report {
   @Column({ name: 'approved_by', type: 'int', nullable: true })
   approvedBy: number | null;
 
-  @ManyToOne(() => Account)
-  @JoinColumn({ name: 'approved_by' })
-  approver: Account;
-
   @Column({ name: 'approved_at', type: 'timestamp', nullable: true })
   approvedAt: Date | null;
 
@@ -91,12 +79,25 @@ export class Report {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
-  @OneToMany(() => ReportStatistic, (statistic) => statistic.report)
-  statistics: ReportStatistic[];
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // -------- relations --------------
+  @ManyToOne(() => Company)
+  @JoinColumn({ name: 'company_id' })
+  company: Company;
+
+  @ManyToOne(() => ReportPeriod)
+  @JoinColumn({ name: 'report_period_id' })
+  reportPeriod: ReportPeriod;
+
+  @ManyToOne(() => Account)
+  @JoinColumn({ name: 'approved_by' })
+  approver: Account;
+
+  @OneToMany(() => ReportStatistic, (statistic) => statistic.report)
+  statistics: ReportStatistic[];
 }

@@ -10,6 +10,7 @@ import { RoleModule } from './modules/role/role.module';
 import { CompanyModule } from './modules/company/company.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { CategoryModule } from './modules/category/category.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     CompanyModule,
     UploadModule,
     ReportsModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

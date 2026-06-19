@@ -8,9 +8,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ReportStatistic } from './report-statistic.entity';
-import { AccidentCause } from './accident-cause.entity';
-import { InjuryFactor } from './injury-factor.entity';
-import { Profession } from './profession.entity';
+import { AccidentCause } from '../../category/entities/accident-cause.entity';
+import { InjuryFactor } from '../../category/entities/injury-factor.entity';
+import { Profession } from '../../category/entities/profession.entity';
 
 @Entity('report_accident_details')
 export class ReportAccidentDetail {
@@ -21,31 +21,15 @@ export class ReportAccidentDetail {
   @Column({ name: 'report_statistic_id' })
   reportStatisticId: number;
 
-  @ManyToOne(() => ReportStatistic, (statistic) => statistic.accidentDetails)
-  @JoinColumn({ name: 'report_statistic_id' })
-  reportStatistic: ReportStatistic;
-
   // ----- Phân loại theo danh mục cố định -----
   @Column({ name: 'accident_cause_id', nullable: true })
   accidentCauseId: number | null;
 
-  @ManyToOne(() => AccidentCause)
-  @JoinColumn({ name: 'accident_cause_id' })
-  accidentCause: AccidentCause;
-
   @Column({ name: 'injury_factor_id', nullable: true })
   injuryFactorId: number | null;
 
-  @ManyToOne(() => InjuryFactor)
-  @JoinColumn({ name: 'injury_factor_id' })
-  injuryFactor: InjuryFactor;
-
   @Column({ name: 'profession_id', nullable: true })
   professionId: number | null;
-
-  @ManyToOne(() => Profession)
-  @JoinColumn({ name: 'profession_id' })
-  profession: Profession;
 
   // ----- Số liệu trong nhóm này -----
   @Column({ name: 'total_incidents', type: 'int', default: 0 })
@@ -135,4 +119,20 @@ export class ReportAccidentDetail {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+  // ---------- Relations -----------
+  @ManyToOne(() => ReportStatistic, (statistic) => statistic.accidentDetails)
+  @JoinColumn({ name: 'report_statistic_id' })
+  reportStatistic: ReportStatistic;
+
+  @ManyToOne(() => AccidentCause)
+  @JoinColumn({ name: 'accident_cause_id' })
+  accidentCause: AccidentCause;
+
+  @ManyToOne(() => InjuryFactor)
+  @JoinColumn({ name: 'injury_factor_id' })
+  injuryFactor: InjuryFactor;
+
+  @ManyToOne(() => Profession)
+  @JoinColumn({ name: 'profession_id' })
+  profession: Profession;
 }

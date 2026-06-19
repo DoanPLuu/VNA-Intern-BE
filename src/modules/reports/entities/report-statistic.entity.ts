@@ -22,10 +22,6 @@ export class ReportStatistic {
   @Column({ name: 'report_id' })
   reportId: number;
 
-  @ManyToOne(() => Report, (report) => report.statistics)
-  @JoinColumn({ name: 'report_id' })
-  report: Report;
-
   @Column({ name: 'report_category', type: 'varchar' })
   reportCategory: ReportCategory;
 
@@ -111,6 +107,11 @@ export class ReportStatistic {
     default: 0,
   })
   propertyDamage: number;
+
+  // ------------- Relations ------------
+  @ManyToOne(() => Report, (report) => report.statistics)
+  @JoinColumn({ name: 'report_id' })
+  report: Report;
 
   @OneToMany(() => ReportAccidentDetail, (detail) => detail.reportStatistic)
   accidentDetails: ReportAccidentDetail[];

@@ -11,6 +11,9 @@ export class Profession {
   @Column({ type: 'varchar' })
   name: string;
 
+  @Column({ type: 'varchar' })
+  level: string;
+
   @Column({ type: 'boolean', default: true })
   status: boolean;
 }
