@@ -1,7 +1,9 @@
+import { Report } from 'src/modules/reports/entities/report.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -10,7 +12,6 @@ export enum ReportPeriodStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
 }
-
 @Entity('report_periods')
 export class ReportPeriod {
   @PrimaryGeneratedColumn({ comment: 'Khóa chính' })
@@ -80,7 +81,7 @@ export class ReportPeriod {
   })
   updatedAt: Date;
 
-  // Thiết lập mối quan hệ: Một kỳ báo cáo có nhiều báo cáo
-  //   @OneToMany(() => Report, (report) => report.reportPeriod)
-  //   reports: Report[];
+  //   Thiết lập mối quan hệ: Một kỳ báo cáo có nhiều báo cáo
+  @OneToMany(() => Report, (report) => report.reportPeriod)
+  reports: Report[];
 }

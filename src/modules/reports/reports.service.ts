@@ -10,7 +10,7 @@ import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import {
   ReportPeriod,
   ReportPeriodStatus,
-} from './entities/report-period.entity';
+} from 'src/modules/report_periods/entities/report_periods.entity';
 import { Company } from '../company/entities/company.entity';
 import { Response } from 'src/common';
 import { AccidentStatisticDto } from './dto/accident-statistic.dto';

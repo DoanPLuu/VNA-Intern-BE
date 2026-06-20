@@ -3,7 +3,7 @@ import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
-import { ReportPeriod } from './entities/report-period.entity';
+import { ReportPeriod } from 'src/modules/report_periods/entities/report_periods.entity';
 import { ReportStatistic } from './entities/report-statistic.entity';
 import { Report } from './entities/report.entity';
 import { Company } from '../company/entities/company.entity';

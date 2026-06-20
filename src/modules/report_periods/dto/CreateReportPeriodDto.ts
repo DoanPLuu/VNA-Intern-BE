@@ -11,8 +11,8 @@ import {
   Min,
 } from 'class-validator';
 import dayjs from 'src/common/utils/dayjs';
-import { IsNotFutureDate } from 'src/common/validators/is-not-future-date.decorator';
 import { ReportPeriodStatus } from '../entities/report_periods.entity';
+
 export class CreateReportPeriodDto {
   @ApiProperty({
     example: 'Báo cáo TNLĐ 6 tháng đầu năm 2022',
@@ -31,63 +31,58 @@ export class CreateReportPeriodDto {
 
   @ApiProperty({
     example: 1,
-    required: false,
     description: 'Quý báo cáo (1 - 4)',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Quý báo cáo không được để trống' })
   @IsInt({ message: 'Quý báo cáo phải là số nguyên' })
   @Min(1, { message: 'Quý báo cáo phải từ quý 1 đến quý 4' })
   @Max(4, { message: 'Quý báo cáo phải từ quý 1 đến quý 4' })
-  quarter?: number | null;
+  quarter: number;
 
   @ApiProperty({
     example: '01/01/2022',
-    required: false,
     description: 'Ngày bắt đầu kỳ báo cáo (định dạng dd/MM/yyyy)',
   })
   @Transform(({ value }: { value: string | null | undefined }) => {
-    if (!value) return null;
+    if (!value) return 'INVALID_DATE';
     const date = dayjs(value, ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD'], true);
     return date.isValid() ? date.toDate() : 'INVALID_DATE';
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Ngày bắt đầu không được để trống' })
   @IsDate({
     message: 'Ngày bắt đầu không đúng định dạng ngày hợp lệ (VD: dd/MM/yyyy)',
   })
-  start_date?: Date | null;
+  startDate: Date;
 
   @ApiProperty({
     example: '30/06/2022',
-    required: false,
     description: 'Ngày kết thúc kỳ báo cáo (định dạng dd/MM/yyyy)',
   })
   @Transform(({ value }: { value: string | null | undefined }) => {
-    if (!value) return null;
+    if (!value) return 'INVALID_DATE';
     const date = dayjs(value, ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD'], true);
     return date.isValid() ? date.toDate() : 'INVALID_DATE';
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Ngày kết thúc không được để trống' })
   @IsDate({
     message: 'Ngày kết thúc không đúng định dạng ngày hợp lệ (VD: dd/MM/yyyy)',
   })
-  end_date?: Date | null;
+  endDate: Date;
 
   @ApiProperty({
     example: '15/07/2022',
-    required: false,
     description: 'Hạn chót nộp báo cáo (định dạng dd/MM/yyyy)',
   })
   @Transform(({ value }: { value: string | null | undefined }) => {
-    if (!value) return null;
+    if (!value) return 'INVALID_DATE';
     const date = dayjs(value, ['DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD'], true);
     return date.isValid() ? date.toDate() : 'INVALID_DATE';
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Ngày hạn chót không được để trống' })
   @IsDate({
     message: 'Ngày hạn chót không đúng định dạng ngày hợp lệ (VD: dd/MM/yyyy)',
   })
-  @IsNotFutureDate()
-  due_date?: Date | null;
+  dueDate: Date; // Đã loại bỏ decorator @IsNotFutureDate() bị sai logic
 
   @ApiProperty({
     example: 'OPEN',

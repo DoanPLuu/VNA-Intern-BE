@@ -10,9 +10,10 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { ReportPeriod } from './report-period.entity';
+// import { ReportPeriod } from './report-period.entity';
 import { Account } from 'src/modules/auth/entities/account.entity';
 import { ReportStatistic } from './report-statistic.entity';
+import { ReportPeriod } from 'src/modules/report_periods/entities/report_periods.entity';
 
 export enum ReportType {
   TAI_NAN_LAO_DONG = 'TAI_NAN_LAO_DONG',
