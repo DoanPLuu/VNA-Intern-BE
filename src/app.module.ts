@@ -9,6 +9,8 @@ import { LocationModule } from './modules/location/location.module';
 import { RoleModule } from './modules/role/role.module';
 import { CompanyModule } from './modules/company/company.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { CategoryModule } from './modules/category/category.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { UploadModule } from './modules/upload/upload.module';
     RoleModule,
     CompanyModule,
     UploadModule,
+    ReportsModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

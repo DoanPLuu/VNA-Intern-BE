@@ -518,10 +518,7 @@ export class AuthService {
   }
 
   async registerCompany(dto: CreateCompany) {
-    const result = await this.companyService.registerCompany(dto);
-    if ('success' in result && result.success === false) return result;
-    if (!('accountId' in result)) return result;
-    const { accountId, email } = result;
+    const { accountId, email } = await this.companyService.registerCompany(dto);
     const otp = this.getOTPCode();
     const otpExpiresMinutes = this.config.get<number>('OTP_EXPIRES_MINUTES', 5);
     const expiresAt = new Date(Date.now() + otpExpiresMinutes * 60 * 1000);

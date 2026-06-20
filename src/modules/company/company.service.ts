@@ -16,49 +16,51 @@ import { MailService } from 'src/common/mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { UpdateCompany } from './dto/update-company.dto';
 import { InitializeCompanyPassword } from './dto/initialize-company-password.dto';
-import * as XLSX from 'xlsx';
 import { DateUtil } from 'src/common/utils/date.util';
+import { Workbook } from 'exceljs';
 
 interface JwtPayload {
   sub: number;
   username: string;
   accountType: AccountType;
 }
-function parseDate(value: string | number | undefined): Date | null {
-  if (!value) return null;
-
-  // Excel serial number (kiểu số)
-  if (typeof value === 'number') {
-    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
-    return isNaN(date.getTime()) ? null : date;
-  }
-
-  // String format: dd-MM-yyyy
-  const parts = value.split('-');
-  if (parts.length !== 3) return null;
-  const [day, month, year] = parts;
-  const date = new Date(`${year}-${month}-${day}`);
-  return isNaN(date.getTime()) ? null : date;
-}
 // Thêm interface này trên đầu service hoặc file riêng
-interface ExcelRow {
-  'Tên doanh nghiệp'?: string;
-  'Mã số thuế'?: string | number;
-  'Loại hình kinh doanh'?: string;
-  'Ngành nghề kinh doanh'?: string;
-  'Tỉnh/TP ĐKKD'?: string;
-  'Phường/Xã ĐKKD'?: string;
-  Email?: string;
-  'Ngày cấp GPKD'?: string | number;
-  'Địa chỉ ĐKKD'?: string;
-  'Tên nước ngoài'?: string;
-  'SĐT doanh nghiệp'?: string;
-  'Người đại diện'?: string;
-  'SĐT đại diện'?: string;
-  'Tỉnh/TP HĐKD'?: string;
-  'Phường/Xã HĐKD'?: string;
-  'Địa chỉ HĐKD'?: string;
-}
+type ExcelLoadInput = Parameters<Workbook['xlsx']['load']>[0];
+
+type ImportCompanyRow = {
+  rowNumber: number;
+  businessName: string;
+  taxCode: string;
+  businessType: string;
+  businessIndustry: string;
+  licenseIssueDate?: string; // DD-MM-YYYY
+  licenseRegistrationProvince: string;
+  licenseRegistrationWard: string;
+  licenseRegistrationAddress?: string;
+  foreignBusinessName?: string;
+  email: string;
+  businessPhone?: string;
+  representativeName?: string;
+  representativePhone?: string;
+  businessOperatingProvince?: string;
+  businessOperatingWard?: string;
+  businessOperatingAddress?: string;
+};
+
+type PreparedImportCompanyRow = ImportCompanyRow & {
+  businessTypeId: number;
+  businessIndustryId: number;
+  provinceDkkdId: number;
+  wardDkkdId: number;
+  provinceHdkdId: number | null;
+  wardHdkdId: number | null;
+  errors: string[];
+};
+
+type ImportCompanyPreviewItem = ImportCompanyRow & {
+  isValid: boolean;
+  errors: string[];
+};
 
 @Injectable()
 export class CompanyService {
@@ -89,6 +91,22 @@ export class CompanyService {
           CompanyStatus.INACTIVE,
         ]),
       },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  // Lấy danh sách company cho việc xóa company và restore
+  async getDeletedCompanies() {
+    return await this.companyRepo.find({
+      relations: { account: true },
+      where: {
+        status: CompanyStatus.DELETED,
+      },
+      order: {
+        updatedAt: 'DESC',
+      },
     });
   }
 
@@ -97,7 +115,10 @@ export class CompanyService {
   }
 
   getAllBusinessIndustry() {
-    return this.businessIndustryRepo.find({ where: { status: 'ACTIVE' } });
+    return this.businessIndustryRepo.find({
+      select: { code: true, name: true },
+      where: { status: 'ACTIVE', level: 'Cấp 4' },
+    });
   }
 
   async getCompanyProfile(taxCode: string) {
@@ -231,7 +252,7 @@ export class CompanyService {
       throw ApiResponse.errorBad(`Doanh nghiệp ${tax_code} đã bị xóa`);
     account.isDeleted = true;
     await this.accountRepo.save(account);
-    company.status = CompanyStatus.INACTIVE;
+    company.status = CompanyStatus.DELETED;
     await this.companyRepo.save(company);
     return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');
   }
@@ -359,91 +380,335 @@ export class CompanyService {
       'Thêm doanh nghiệp thành công',
     );
   }
+  // ── Sinh file Excel mẫu (data + hướng dẫn + danh mục) ─────────
+  async generateImportCompanyTemplate(): Promise<Buffer> {
+    const workbook = new Workbook();
 
-  async importFromFile(file: Express.Multer.File) {
-    // 1. Parse file Excel
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
+    // ── Sheet 1: dữ liệu nhập ──────────────────────────────────────
+    const dataSheet = workbook.addWorksheet('Companies');
+    dataSheet.columns = [
+      { header: 'businessName', key: 'businessName', width: 30 },
+      { header: 'taxCode', key: 'taxCode', width: 18 },
+      { header: 'businessType', key: 'businessType', width: 28 },
+      { header: 'businessIndustry', key: 'businessIndustry', width: 28 },
+      { header: 'licenseIssueDate', key: 'licenseIssueDate', width: 16 },
+      {
+        header: 'licenseRegistrationProvince',
+        key: 'licenseRegistrationProvince',
+        width: 24,
+      },
+      {
+        header: 'licenseRegistrationWard',
+        key: 'licenseRegistrationWard',
+        width: 24,
+      },
+      {
+        header: 'licenseRegistrationAddress',
+        key: 'licenseRegistrationAddress',
+        width: 30,
+      },
+      { header: 'email', key: 'email', width: 28 },
+      { header: 'foreignBusinessName', key: 'foreignBusinessName', width: 24 },
+      { header: 'businessPhone', key: 'businessPhone', width: 16 },
+      { header: 'representativeName', key: 'representativeName', width: 22 },
+      { header: 'representativePhone', key: 'representativePhone', width: 18 },
+      {
+        header: 'businessOperatingProvince',
+        key: 'businessOperatingProvince',
+        width: 24,
+      },
+      {
+        header: 'businessOperatingWard',
+        key: 'businessOperatingWard',
+        width: 24,
+      },
+      {
+        header: 'businessOperatingAddress',
+        key: 'businessOperatingAddress',
+        width: 30,
+      },
+    ];
 
-    if (rows.length === 0)
-      throw ApiResponse.errorBad('File Excel không có dữ liệu');
+    dataSheet.addRow({
+      businessName: 'Công ty TNHH Môi trường xanh',
+      taxCode: '1234567890',
+      businessType: 'Công ty TNHH một thành viên',
+      businessIndustry: 'Trồng rừng và chăm sóc rừng',
+      licenseIssueDate: '09-01-2020',
+      licenseRegistrationProvince: 'Tp Hồ Chí Minh',
+      licenseRegistrationWard: 'Phường Chợ Lớn',
+      licenseRegistrationAddress: '192 Nguyễn Trãi',
+      email: 'gnagroup@gmail.com',
+      foreignBusinessName: 'GNA Group',
+      businessPhone: '0912345678',
+      representativeName: 'Trần Thị B',
+      representativePhone: '0819231432',
+      businessOperatingProvince: 'Tp Hồ Chí Minh',
+      businessOperatingWard: 'Phường Chợ Lớn',
+      businessOperatingAddress: '192 Nguyễn Trãi',
+    });
 
-    const success: string[] = [];
-    const errors: { row: number; reason: string }[] = [];
+    // ── Sheet 2: hướng dẫn ───────────────────────────────────────
+    const guideSheet = workbook.addWorksheet('HuongDan');
+    guideSheet.columns = [
+      { header: 'Cột', key: 'column', width: 28 },
+      { header: 'Bắt buộc', key: 'required', width: 12 },
+      { header: 'Mô tả', key: 'description', width: 65 },
+      { header: 'Ví dụ', key: 'example', width: 30 },
+    ];
 
-    for (const [index, row] of rows.entries()) {
-      const rowNumber = index + 2; // +2 vì row 1 là header
+    guideSheet.addRows([
+      [
+        'businessName',
+        'Có',
+        'Tên doanh nghiệp, không chứa ký tự đặc biệt',
+        'Công ty TNHH Môi trường xanh',
+      ],
+      [
+        'taxCode',
+        'Có',
+        'Mã số thuế duy nhất, 10 chữ số hoặc 10 chữ số-3 chữ số',
+        '1234567890 hoặc 1234567890-123',
+      ],
+      [
+        'businessType',
+        'Có',
+        'Tên loại hình kinh doanh, xem tại sheet DanhMuc',
+        'Công ty TNHH một thành viên',
+      ],
+      [
+        'businessIndustry',
+        'Có',
+        'Tên ngành nghề kinh doanh, xem tại sheet DanhMuc',
+        'Trồng rừng và chăm sóc rừng',
+      ],
+      [
+        'licenseIssueDate',
+        'Không',
+        'Ngày cấp GPKD, định dạng DD-MM-YYYY',
+        '09-01-2020',
+      ],
+      [
+        'licenseRegistrationProvince',
+        'Có',
+        'Tỉnh/thành phố đăng ký kinh doanh, xem tại sheet DanhMuc',
+        'Tp Hồ Chí Minh',
+      ],
+      [
+        'licenseRegistrationWard',
+        'Có',
+        'Phường/xã đăng ký kinh doanh, phải thuộc tỉnh đã chọn',
+        'Phường Chợ Lớn',
+      ],
+      [
+        'licenseRegistrationAddress',
+        'Không',
+        'Địa chỉ chi tiết đăng ký kinh doanh',
+        '192 Nguyễn Trãi',
+      ],
+      ['email', 'Có', 'Email duy nhất trong hệ thống', 'gnagroup@gmail.com'],
+      [
+        'foreignBusinessName',
+        'Không',
+        'Tên doanh nghiệp bằng tiếng nước ngoài',
+        'GNA Group',
+      ],
+      ['businessPhone', 'Không', 'Số điện thoại doanh nghiệp', '0912345678'],
+      ['representativeName', 'Không', 'Tên người đại diện', 'Trần Thị B'],
+      [
+        'representativePhone',
+        'Không',
+        'Số điện thoại người đại diện',
+        '0819231432',
+      ],
+      [
+        'businessOperatingProvince',
+        'Không',
+        'Tỉnh/thành phố hoạt động kinh doanh',
+        'Tp Hồ Chí Minh',
+      ],
+      [
+        'businessOperatingWard',
+        'Không',
+        'Phường/xã hoạt động kinh doanh, phải thuộc tỉnh đã chọn',
+        'Phường Bình Thọ',
+      ],
+      [
+        'businessOperatingAddress',
+        'Không',
+        'Địa chỉ chi tiết hoạt động kinh doanh',
+        '192 Nguyễn Trãi',
+      ],
+    ]);
 
-      try {
-        // 2. Map Excel → DTO
-        const dto: CreateCompany = {
-          business_name: row['Tên doanh nghiệp']?.trim() ?? '',
-          tax_code: row['Mã số thuế']?.toString().trim() ?? '',
-          business_type: row['Loại hình kinh doanh']?.trim() ?? '',
-          business_industry: row['Ngành nghề kinh doanh']?.trim() ?? '',
-          license_registration_province: row['Tỉnh/TP ĐKKD']?.trim() ?? '',
-          license_registration_ward: row['Phường/Xã ĐKKD']?.trim() ?? '',
-          email: row['Email']?.trim() ?? '',
+    // ── Sheet 3: danh mục tham chiếu (businessType / industry / province / ward) ──
+    const [businessTypes, businessIndustries, provinces] = await Promise.all([
+      this.businessTypeRepo.find({ where: { status: 'ACTIVE' } }),
+      this.businessIndustryRepo.find({ where: { status: 'ACTIVE' } }),
+      this.locationService.getProvinces(),
+    ]);
 
-          license_issue_date: parseDate(row['Ngày cấp GPKD']),
-          license_registration_adress: row['Địa chỉ ĐKKD'] ?? undefined,
-          foreign_business_name: row['Tên nước ngoài'] ?? undefined,
-          business_phone: row['SĐT doanh nghiệp'] ?? undefined,
-          representative_name: row['Người đại diện'] ?? undefined,
-          representative_phone: row['SĐT đại diện'] ?? undefined,
-          business_operating_province: row['Tỉnh/TP HĐKD'] ?? undefined,
-          business_operating_ward: row['Phường/Xã HĐKD'] ?? undefined,
-          business_operating_adress: row['Địa chỉ HĐKD'] ?? undefined,
+    const catalogSheet = workbook.addWorksheet('DanhMuc');
+    catalogSheet.columns = [
+      { header: 'Loại hình kinh doanh', key: 'businessType', width: 30 },
+      { header: 'Ngành nghề kinh doanh', key: 'businessIndustry', width: 30 },
+      { header: 'Tỉnh/Thành phố', key: 'province', width: 28 },
+    ];
 
-          business_license_file_url: undefined,
-          other_document_file_url: undefined,
-        };
+    const maxRows = Math.max(
+      businessTypes.length,
+      businessIndustries.length,
+      provinces.length,
+    );
 
-        // 3. Validate field bắt buộc
-        if (
-          !dto.business_name ||
-          !dto.tax_code ||
-          !dto.business_type ||
-          !dto.business_industry ||
-          !dto.license_registration_province ||
-          !dto.license_registration_ward ||
-          !dto.email
-        ) {
-          errors.push({ row: rowNumber, reason: 'Thiếu thông tin bắt buộc' });
-          continue;
-        }
+    for (let i = 0; i < maxRows; i++) {
+      catalogSheet.addRow({
+        businessType: businessTypes[i]?.name ?? '',
+        businessIndustry: businessIndustries[i]?.name ?? '',
+        province: provinces[i]?.name ?? '',
+      });
+    }
 
-        // 4. Kiểm tra trùng tax_code
-        const existed = await this.companyRepo.findOne({
-          where: { taxCode: dto.tax_code },
-        });
-        if (existed) {
-          errors.push({
-            row: rowNumber,
-            reason: `Mã số thuế ${dto.tax_code} đã tồn tại`,
-          });
-          continue;
-        }
+    // ── Sheet 4: danh mục phường/xã (gộp theo tỉnh, để tránh quá nhiều cột) ──
+    const wardSheet = workbook.addWorksheet('DanhMucPhuongXa');
+    wardSheet.columns = [
+      { header: 'Tỉnh/Thành phố', key: 'province', width: 28 },
+      { header: 'Phường/Xã', key: 'ward', width: 28 },
+    ];
 
-        // 5. Gọi lại service tạo company (tái dụng logic có sẵn)
-        await this.createCompany(dto);
-        success.push(dto.tax_code);
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Lỗi không xác định';
-        errors.push({ row: rowNumber, reason: message });
+    for (const province of provinces) {
+      const wards = await this.locationService.getWardsByProvince(province.id);
+      for (const ward of wards) {
+        wardSheet.addRow({ province: province.name, ward: ward.name });
       }
     }
 
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
+  /* ── Preview trước khi import thật ───────────────────────────── */
+
+  async previewImportCompanies(fileBuffer: Buffer) {
+    const rows = await this.parseImportCompanyFile(fileBuffer);
+    const preparedRows = await this.validateImportCompanyRows(rows);
+
+    const items: ImportCompanyPreviewItem[] = preparedRows.map((row) => ({
+      rowNumber: row.rowNumber,
+      businessName: row.businessName,
+      taxCode: row.taxCode,
+      businessType: row.businessType,
+      businessIndustry: row.businessIndustry,
+      licenseIssueDate: row.licenseIssueDate,
+      licenseRegistrationProvince: row.licenseRegistrationProvince,
+      licenseRegistrationWard: row.licenseRegistrationWard,
+      licenseRegistrationAddress: row.licenseRegistrationAddress,
+      foreignBusinessName: row.foreignBusinessName,
+      email: row.email,
+      businessPhone: row.businessPhone,
+      representativeName: row.representativeName,
+      representativePhone: row.representativePhone,
+      businessOperatingProvince: row.businessOperatingProvince,
+      businessOperatingWard: row.businessOperatingWard,
+      businessOperatingAddress: row.businessOperatingAddress,
+      isValid: row.errors.length === 0,
+      errors: row.errors,
+    }));
+
+    const validCount = items.filter((item) => item.isValid).length;
+    const invalidCount = items.length - validCount;
+
     return ApiResponse.success(
       {
-        total: rows.length,
-        successCount: success.length,
-        errorCount: errors.length,
-        errors,
+        summary: {
+          totalRows: items.length,
+          validRows: validCount,
+          invalidRows: invalidCount,
+          canImport: invalidCount === 0,
+        },
+        items,
       },
-      `Import hoàn tất: ${success.length} thành công, ${errors.length} lỗi`,
+      'Kiểm tra file import thành công',
+    );
+  }
+
+  async importFromFile(file: Express.Multer.File) {
+    const rows = await this.parseImportCompanyFile(file.buffer);
+    const preparedRows = await this.validateImportCompanyRows(rows);
+
+    const invalidRows = preparedRows
+      .filter((row) => row.errors.length > 0)
+      .map((row) => ({
+        rowNumber: row.rowNumber,
+        businessName: row.businessName,
+        taxCode: row.taxCode,
+        email: row.email,
+        errors: row.errors,
+      }));
+
+    if (invalidRows.length > 0) {
+      throw ApiResponse.errorBad('File import có dữ liệu không hợp lệ', {
+        totalRows: preparedRows.length,
+        invalidRows: invalidRows.length,
+        items: invalidRows,
+      });
+    }
+
+    const createdAccountIds = await this.accountRepo.manager.transaction(
+      async (manager) => {
+        const accountRepo = manager.getRepository(Account);
+        const companyRepo = manager.getRepository(Company);
+
+        const createdIds: number[] = [];
+        const rawPassword = '12345678';
+
+        for (const row of preparedRows) {
+          const account = accountRepo.create({
+            username: row.taxCode.trim(),
+            password: await bcrypt.hash(rawPassword, 10),
+            email: row.email.trim(),
+            accountType: AccountType.DOANH_NGHIEP,
+            isActive: true,
+            isDeleted: false,
+          });
+          const savedAccount = await accountRepo.save(account);
+
+          const company = companyRepo.create({
+            accountId: savedAccount.id,
+            companyName: row.businessName.trim(),
+            foreignCompanyName: row.foreignBusinessName ?? null,
+            taxCode: row.taxCode.trim(),
+            businessTypeId: row.businessTypeId,
+            businessIndustryId: row.businessIndustryId,
+            licenseIssueDate: row.licenseIssueDate
+              ? new Date(this.convertDdMmYyyyToIso(row.licenseIssueDate))
+              : null,
+            provinceDkkdId: row.provinceDkkdId,
+            wardDkkdId: row.wardDkkdId,
+            addressDkkd: row.licenseRegistrationAddress ?? null,
+            businessPhone: row.businessPhone ?? null,
+            representativeName: row.representativeName ?? null,
+            representativePhone: row.representativePhone ?? null,
+            provinceHdkdId: row.provinceHdkdId,
+            wardHdkdId: row.wardHdkdId,
+            addressHdkd: row.businessOperatingAddress ?? null,
+            gpkdFilePath: null,
+            gtkFilePath: null,
+          });
+          await companyRepo.save(company);
+
+          createdIds.push(savedAccount.id);
+        }
+
+        return createdIds;
+      },
+    );
+
+    return ApiResponse.success(
+      {
+        affected: createdAccountIds.length,
+        accountIds: createdAccountIds,
+      },
+      'Import doanh nghiệp thành công',
     );
   }
 
@@ -987,5 +1252,459 @@ export class CompanyService {
       provinceHDKD,
       wardHDKD,
     };
+  }
+
+  // ── Private helper for import file ──────────────────────────────────────────
+  private formatDateToDdMmYyyy(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  private normalizeExcelValue(value: unknown): string {
+    if (value === null || value === undefined) return '';
+
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return String(value).trim();
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as {
+        text?: string;
+        result?: string | number | boolean | Date | null;
+        richText?: Array<{ text: string }>;
+      };
+
+      if (typeof obj.text === 'string') return obj.text.trim();
+
+      if (Array.isArray(obj.richText)) {
+        return obj.richText
+          .map((item) => item.text)
+          .join('')
+          .trim();
+      }
+
+      if (obj.result instanceof Date) {
+        return obj.result.toISOString().slice(0, 10);
+      }
+
+      if (
+        typeof obj.result === 'string' ||
+        typeof obj.result === 'number' ||
+        typeof obj.result === 'boolean'
+      ) {
+        return String(obj.result).trim();
+      }
+    }
+
+    return '';
+  }
+  private normalizeExcelDateValue(value: unknown): string {
+    if (value === null || value === undefined) return '';
+
+    if (value instanceof Date) {
+      return this.formatDateToDdMmYyyy(value);
+    }
+
+    if (typeof value === 'object') {
+      const obj = value as {
+        text?: string;
+        result?: string | number | boolean | Date | null;
+      };
+
+      if (obj.result instanceof Date) {
+        return this.formatDateToDdMmYyyy(obj.result);
+      }
+
+      if (typeof obj.text === 'string') return obj.text.trim();
+    }
+
+    return this.normalizeExcelValue(value);
+  }
+
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private isValidTaxCode(taxCode: string): boolean {
+    return /^(\d{10}|\d{10}-\d{3})$/.test(taxCode);
+  }
+
+  private isValidImportDate(dateString: string): boolean {
+    if (!/^\d{2}-\d{2}-\d{4}$/.test(dateString)) return false;
+
+    const [day, month, year] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
+  }
+
+  private isFutureImportDate(dateString: string): boolean {
+    const [day, month, year] = dateString.split('-').map(Number);
+    const inputDate = new Date(year, month - 1, day);
+    const today = new Date();
+
+    inputDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return inputDate.getTime() > today.getTime();
+  }
+
+  private convertDdMmYyyyToIso(dateString: string): string {
+    const [day, month, year] = dateString.split('-');
+    return `${year}-${month}-${day}`;
+  }
+
+  // ── Đọc file Excel ra danh sách row thô ───────────────────────
+  private async parseImportCompanyFile(
+    fileBuffer: Buffer,
+  ): Promise<ImportCompanyRow[]> {
+    const workbook = new Workbook();
+    await workbook.xlsx.load(fileBuffer as unknown as ExcelLoadInput);
+
+    const worksheet =
+      workbook.getWorksheet('Companies') ?? workbook.worksheets[0];
+    if (!worksheet) {
+      throw ApiResponse.errorBad('File Excel không có sheet dữ liệu');
+    }
+
+    const rows: ImportCompanyRow[] = [];
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+
+      const businessName = this.normalizeExcelValue(row.getCell(1).value);
+      const taxCode = this.normalizeExcelValue(row.getCell(2).value);
+      const businessType = this.normalizeExcelValue(row.getCell(3).value);
+      const businessIndustry = this.normalizeExcelValue(row.getCell(4).value);
+      const licenseIssueDate = this.normalizeExcelDateValue(
+        row.getCell(5).value,
+      );
+      const licenseRegistrationProvince = this.normalizeExcelValue(
+        row.getCell(6).value,
+      );
+      const licenseRegistrationWard = this.normalizeExcelValue(
+        row.getCell(7).value,
+      );
+      const licenseRegistrationAddress = this.normalizeExcelValue(
+        row.getCell(8).value,
+      );
+      const email = this.normalizeExcelValue(row.getCell(9).value);
+      const foreignBusinessName = this.normalizeExcelValue(
+        row.getCell(10).value,
+      );
+      const businessPhone = this.normalizeExcelValue(row.getCell(11).value);
+      const representativeName = this.normalizeExcelValue(
+        row.getCell(12).value,
+      );
+      const representativePhone = this.normalizeExcelValue(
+        row.getCell(13).value,
+      );
+      const businessOperatingProvince = this.normalizeExcelValue(
+        row.getCell(14).value,
+      );
+      const businessOperatingWard = this.normalizeExcelValue(
+        row.getCell(15).value,
+      );
+      const businessOperatingAddress = this.normalizeExcelValue(
+        row.getCell(16).value,
+      );
+
+      const isEmptyRow = [
+        businessName,
+        taxCode,
+        businessType,
+        businessIndustry,
+        licenseIssueDate,
+        licenseRegistrationProvince,
+        licenseRegistrationWard,
+        licenseRegistrationAddress,
+        email,
+        foreignBusinessName,
+        businessPhone,
+        representativeName,
+        representativePhone,
+        businessOperatingProvince,
+        businessOperatingWard,
+        businessOperatingAddress,
+      ].every((item) => !item);
+
+      if (isEmptyRow) continue;
+
+      rows.push({
+        rowNumber,
+        businessName,
+        taxCode,
+        businessType,
+        businessIndustry,
+        licenseIssueDate: licenseIssueDate || undefined,
+        licenseRegistrationProvince,
+        licenseRegistrationWard,
+        licenseRegistrationAddress: licenseRegistrationAddress || undefined,
+        foreignBusinessName: foreignBusinessName || undefined,
+        email,
+        businessPhone: businessPhone || undefined,
+        representativeName: representativeName || undefined,
+        representativePhone: representativePhone || undefined,
+        businessOperatingProvince: businessOperatingProvince || undefined,
+        businessOperatingWard: businessOperatingWard || undefined,
+        businessOperatingAddress: businessOperatingAddress || undefined,
+      });
+    }
+
+    if (!rows.length) {
+      throw ApiResponse.errorBad('File Excel không có dữ liệu để import');
+    }
+
+    return rows;
+  }
+
+  // ── Validate toàn bộ rows, resolve các lookup id ──────────────
+  private async validateImportCompanyRows(
+    rows: ImportCompanyRow[],
+  ): Promise<PreparedImportCompanyRow[]> {
+    // ── Preload business type / industry theo tên (giảm query lặp) ──
+    const businessTypeNames = [
+      ...new Set(rows.map((r) => r.businessType).filter(Boolean)),
+    ];
+    const businessIndustryNames = [
+      ...new Set(rows.map((r) => r.businessIndustry).filter(Boolean)),
+    ];
+
+    const businessTypes = businessTypeNames.length
+      ? await this.businessTypeRepo.find({
+          where: { name: In(businessTypeNames) },
+        })
+      : [];
+    const businessIndustries = businessIndustryNames.length
+      ? await this.businessIndustryRepo.find({
+          where: { name: In(businessIndustryNames) },
+        })
+      : [];
+
+    const businessTypeMap = new Map(businessTypes.map((bt) => [bt.name, bt]));
+    const businessIndustryMap = new Map(
+      businessIndustries.map((bi) => [bi.name, bi]),
+    );
+
+    // ── Preload tax code / email đã tồn tại trong DB ────────────────
+    const taxCodes = [...new Set(rows.map((r) => r.taxCode).filter(Boolean))];
+    const emails = [...new Set(rows.map((r) => r.email).filter(Boolean))];
+
+    const existingCompanies = taxCodes.length
+      ? await this.companyRepo.find({
+          where: { taxCode: In(taxCodes) },
+          select: { taxCode: true },
+        })
+      : [];
+    const existingAccounts = emails.length
+      ? await this.accountRepo.find({
+          where: { email: In(emails) },
+          select: { email: true },
+        })
+      : [];
+
+    const existingTaxCodeSet = new Set(
+      existingCompanies.map((c) => c.taxCode?.trim()).filter(Boolean),
+    );
+    const existingEmailSet = new Set(
+      existingAccounts.map((a) => a.email?.trim()).filter(Boolean),
+    );
+
+    // ── Đếm trùng lặp trong cùng 1 file ──────────────────────────────
+    const taxCodeCounter = new Map<string, number>();
+    const emailCounter = new Map<string, number>();
+
+    for (const row of rows) {
+      if (row.taxCode) {
+        taxCodeCounter.set(
+          row.taxCode,
+          (taxCodeCounter.get(row.taxCode) ?? 0) + 1,
+        );
+      }
+      if (row.email) {
+        emailCounter.set(row.email, (emailCounter.get(row.email) ?? 0) + 1);
+      }
+    }
+
+    const preparedRows: PreparedImportCompanyRow[] = [];
+
+    for (const row of rows) {
+      const errors: string[] = [];
+
+      if (!row.businessName) {
+        errors.push('Tên doanh nghiệp không được để trống');
+      } else if (!/^[\p{L}\p{N}\s]+$/u.test(row.businessName)) {
+        errors.push('Tên doanh nghiệp không được chứa ký tự đặc biệt');
+      }
+
+      if (!row.taxCode) {
+        errors.push('Mã số thuế không được để trống');
+      } else if (!this.isValidTaxCode(row.taxCode)) {
+        errors.push(
+          'Mã số thuế không hợp lệ, phải đủ 10 chữ số hoặc 13 chữ số (VD: 1234567890 hoặc 1234567890-123)',
+        );
+      }
+
+      if (!row.businessType) {
+        errors.push('Loại hình kinh doanh không được để trống');
+      }
+
+      if (!row.businessIndustry) {
+        errors.push('Ngành nghề kinh doanh không được để trống');
+      }
+
+      if (!row.licenseRegistrationProvince) {
+        errors.push('Tỉnh/thành phố đăng ký kinh doanh không được để trống');
+      }
+
+      if (!row.licenseRegistrationWard) {
+        errors.push('Phường/xã đăng ký kinh doanh không được để trống');
+      }
+
+      if (!row.email) {
+        errors.push('Email không được để trống');
+      } else if (!this.isValidEmail(row.email)) {
+        errors.push('Email không đúng định dạng');
+      }
+
+      if (row.licenseIssueDate) {
+        if (!this.isValidImportDate(row.licenseIssueDate)) {
+          errors.push('Ngày cấp GPKD không đúng định dạng DD-MM-YYYY');
+        } else if (this.isFutureImportDate(row.licenseIssueDate)) {
+          errors.push('Ngày cấp GPKD không được lớn hơn ngày hiện tại');
+        }
+      }
+
+      if (row.businessOperatingWard && !row.businessOperatingProvince) {
+        errors.push(
+          'Có phường/xã hoạt động kinh doanh thì bắt buộc phải có tỉnh/thành phố',
+        );
+      }
+
+      if (row.taxCode && (taxCodeCounter.get(row.taxCode) ?? 0) > 1) {
+        errors.push('Mã số thuế bị trùng trong file import');
+      }
+
+      if (row.email && (emailCounter.get(row.email) ?? 0) > 1) {
+        errors.push('Email bị trùng trong file import');
+      }
+
+      if (row.taxCode && existingTaxCodeSet.has(row.taxCode)) {
+        errors.push('Mã số thuế đã tồn tại trong hệ thống');
+      }
+
+      if (row.email && existingEmailSet.has(row.email)) {
+        errors.push('Email đã tồn tại trong hệ thống');
+      }
+
+      const businessType = row.businessType
+        ? businessTypeMap.get(row.businessType)
+        : null;
+      if (row.businessType && !businessType) {
+        errors.push('Loại hình kinh doanh không tồn tại');
+      }
+
+      const businessIndustry = row.businessIndustry
+        ? businessIndustryMap.get(row.businessIndustry)
+        : null;
+      if (row.businessIndustry && !businessIndustry) {
+        errors.push('Ngành nghề kinh doanh không tồn tại');
+      }
+      // ── Resolve địa chỉ ĐKKD (bắt buộc) ──────────────────────────
+      let provinceDkkdId: number | null = null;
+      let wardDkkdId: number | null = null;
+
+      if (row.licenseRegistrationProvince) {
+        const province = await this.locationService.getProvinceByName(
+          row.licenseRegistrationProvince,
+        );
+        if (!province) {
+          errors.push('Không tìm thấy tỉnh/thành phố đăng ký kinh doanh');
+        } else {
+          provinceDkkdId = province.id;
+        }
+      }
+
+      if (row.licenseRegistrationWard) {
+        if (!provinceDkkdId) {
+          errors.push(
+            'Vui lòng cung cấp tỉnh/thành phố đăng ký kinh doanh hợp lệ trước khi chọn phường/xã',
+          );
+        } else {
+          const ward = await this.locationService.getWardByNameAndProvince(
+            row.licenseRegistrationWard,
+            provinceDkkdId,
+          );
+          if (!ward) {
+            errors.push(
+              'Phường/xã đăng ký kinh doanh không thuộc tỉnh/thành phố đã chọn',
+            );
+          } else {
+            wardDkkdId = ward.id;
+          }
+        }
+      }
+
+      // ── Resolve địa chỉ HĐKD (optional) ──────────────────────────
+      let provinceHdkdId: number | null = null;
+      let wardHdkdId: number | null = null;
+
+      if (row.businessOperatingProvince) {
+        const province = await this.locationService.getProvinceByName(
+          row.businessOperatingProvince,
+        );
+        if (!province) {
+          errors.push('Không tìm thấy tỉnh/thành phố hoạt động kinh doanh');
+        } else {
+          provinceHdkdId = province.id;
+        }
+      }
+
+      if (row.businessOperatingWard) {
+        if (!provinceHdkdId) {
+          errors.push(
+            'Vui lòng cung cấp tỉnh/thành phố hoạt động kinh doanh hợp lệ trước khi chọn phường/xã',
+          );
+        } else {
+          const ward = await this.locationService.getWardByNameAndProvince(
+            row.businessOperatingWard,
+            provinceHdkdId,
+          );
+          if (!ward) {
+            errors.push(
+              'Phường/xã hoạt động kinh doanh không thuộc tỉnh/thành phố đã chọn',
+            );
+          } else {
+            wardHdkdId = ward.id;
+          }
+        }
+      }
+
+      preparedRows.push({
+        ...row,
+        businessTypeId: businessType?.id ?? 0,
+        businessIndustryId: businessIndustry?.id ?? 0,
+        provinceDkkdId: provinceDkkdId ?? 0,
+        wardDkkdId: wardDkkdId ?? 0,
+        provinceHdkdId,
+        wardHdkdId,
+        errors,
+      });
+    }
+
+    return preparedRows;
   }
 }
