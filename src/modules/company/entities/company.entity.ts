@@ -1,3 +1,6 @@
+import { Account } from 'src/modules/auth/entities/account.entity';
+import { Province } from 'src/modules/location/entities/province.entity';
+import { Ward } from 'src/modules/location/entities/ward.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,9 +11,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Account } from 'src/modules/auth/entities/account.entity';
-import { Province } from 'src/modules/location/entities/province.entity';
-import { Ward } from 'src/modules/location/entities/ward.entity';
 import { BusinessIndustry } from './business-industry.entity';
 import { BusinessType } from './business-type.entity';
 

@@ -46,12 +46,14 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<Account> {
     const account = await this.findAccountByUserName(username);
+
     if (!account || !(await bcrypt.compare(password, account.password))) {
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
     }
     if (!account.isActive) {
       throw new UnauthorizedException('Tài khoản này đã bị khóa');
     }
+
     return account;
   }
 

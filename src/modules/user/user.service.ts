@@ -622,13 +622,62 @@ export class UserService {
       ['email', 'Có', 'Email duy nhất trong hệ thống', 'admin01@gmail.com'],
       ['fullName', 'Có', 'Họ và tên người dùng', 'Nguyen Van A'],
       ['dateOfBirth', 'Không', 'Định dạng DD-MM-YYYY', '15-06-1995'],
-      ['gender', 'Không', 'Giới tính', 'Male'],
+      [
+        'gender',
+        'Không',
+        'Giới tính',
+        'Male',
+        'Xem danh sách giá trị hợp lệ tại sheet DanhMuc',
+      ],
       ['position', 'Không', 'Chức danh', 'Chuyên viên'],
-      ['roleCode', 'Có', 'Mã vai trò đã tồn tại trong bảng roles', 'ADMIN'],
+      [
+        'roleCode',
+        'Có',
+        'Mã vai trò đã tồn tại trong bảng roles',
+        'ADMIN',
+        'Xem danh sách RoleCode tại sheet DanhMuc',
+      ],
       ['province', 'Không', 'Tên tỉnh/thành phố', 'Hồ Chí Minh'],
       ['ward', 'Không', 'Tên phường/xã, phải thuộc tỉnh đã chọn', ' Gò Vấp'],
       ['address', 'Không', 'Địa chỉ chi tiết', '123 Nguyen Trai'],
       ['isActive', 'Không', 'true/false, bỏ trống mặc định true', 'true'],
+    ]);
+    const lookupSheet = workbook.addWorksheet('DanhMuc');
+
+    lookupSheet.columns = [
+      { header: 'Loại', key: 'type', width: 20 },
+      { header: 'Giá trị', key: 'value', width: 30 },
+      { header: 'Mô tả', key: 'description', width: 50 },
+    ];
+    const roles = await this.roleRepo.find({
+      select: {
+        code: true,
+        name: true,
+      },
+    });
+    roles.forEach((role) => {
+      lookupSheet.addRow({
+        type: 'RoleCode',
+        value: role.code,
+        description: role.name,
+      });
+    });
+    lookupSheet.addRows([
+      {
+        type: 'Gender',
+        value: 'Male',
+        description: 'Nam',
+      },
+      {
+        type: 'Gender',
+        value: 'Female',
+        description: 'Nữ',
+      },
+      {
+        type: 'Gender',
+        value: 'Other',
+        description: 'Khác',
+      },
     ]);
 
     return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -1099,6 +1148,16 @@ export class UserService {
           }
           account.roleId = role.id;
         }
+        if (dto.email && dto.email !== account.email) {
+          const existingEmail = await accountRepo.findOne({
+            where: { email: dto.email },
+          });
+
+          if (existingEmail) {
+            throw Response.errorDuplicated('Email đã tồn tại');
+          }
+          account.email = dto.email;
+        }
         if (dto.isActive !== undefined) {
           account.isActive = dto.isActive;
         }
@@ -1313,6 +1372,20 @@ export class UserService {
       { id: accountId },
       { password: newPasswordHash },
     );
+    // await this.accountRepo.manager.transaction(async (manager) => {
+    //   const accountRepo = manager.getRepository(Account);
+    //   const refreshTokenRepo = manager.getRepository(RefreshToken);
+
+    //   await accountRepo.update(
+    //     { id: accountId },
+    //     { password: newPasswordHash },
+    //   );
+
+    // await refreshTokenRepo.update(
+    //   { accountId, isRevoked: false },
+    //   { isRevoked: true },
+    // );
+    // });
 
     return Response.success(
       {

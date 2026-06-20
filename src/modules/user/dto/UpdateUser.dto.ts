@@ -3,6 +3,7 @@ import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -30,6 +31,10 @@ export class UpdateUserDto {
   @IsInt({ message: 'Vai trò phải là các trường hợp đã tồn tại' })
   @Min(1, { message: 'Vai trò phải lớn hơn hoặc bằng 1' })
   roleId?: number;
+  @ApiProperty({ example: 'admin@gmail.com' })
+  @IsNotEmpty({ message: 'Email không được để trống' })
+  @IsEmail({}, { message: 'Email không đúng định dạng' })
+  email: string;
 
   @ApiPropertyOptional({ example: '1995-06-01' })
   @IsOptional()
