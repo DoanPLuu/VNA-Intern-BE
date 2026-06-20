@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 // Nghề nghiệp của công nhân
 @Entity('professions')
 export class Profession {
@@ -14,6 +21,18 @@ export class Profession {
   @Column({ type: 'varchar' })
   level: string;
 
+  @Column({ name: 'parent_id', type: 'int', nullable: true })
+  parentId: number | null;
+
   @Column({ type: 'boolean', default: true })
   status: boolean;
+
+  @ManyToOne(() => Profession, (profession) => profession.children, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'parent_id' })
+  parent: Profession;
+
+  @OneToMany(() => Profession, (profession) => profession.parent)
+  children: Profession[];
 }

@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Profession } from './entities/profession.entity';
 import { InjuryFactor } from './entities/injury-factor.entity';
 import { InjuryType } from './entities/injury-type.entity';
-import { AccidentCause } from './entities/account_cause.entity';
+import { AccidentCause } from './entities/account-cause.entity';
 
 @Module({
   imports: [

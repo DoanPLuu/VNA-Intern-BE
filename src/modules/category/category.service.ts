@@ -4,7 +4,7 @@ import { InjuryFactor } from './entities/injury-factor.entity';
 import { Repository } from 'typeorm';
 import { InjuryType } from './entities/injury-type.entity';
 import { Profession } from './entities/profession.entity';
-import { AccidentCause } from './entities/account_cause.entity';
+import { AccidentCause } from './entities/account-cause.entity';
 
 @Injectable()
 export class CategoryService {

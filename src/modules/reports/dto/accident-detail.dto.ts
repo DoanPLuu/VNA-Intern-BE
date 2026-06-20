@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsNotEmpty, IsPositive } from 'class-validator';
-import { AccidentStatisticDto } from './accident_statistic.dto';
+import { AccidentStatisticDto } from './accident-statistic.dto';
 
 export class AccidentDetailDto extends AccidentStatisticDto {
   @ApiProperty({ example: 1 })

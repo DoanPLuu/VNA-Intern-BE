@@ -10,7 +10,7 @@ import {
 import { ReportStatistic } from './report-statistic.entity';
 import { InjuryFactor } from '../../category/entities/injury-factor.entity';
 import { Profession } from '../../category/entities/profession.entity';
-import { AccidentCause } from 'src/modules/category/entities/account_cause.entity';
+import { AccidentCause } from 'src/modules/category/entities/account-cause.entity';
 
 @Entity('report_accident_details')
 export class ReportAccidentDetail {
