@@ -37,3 +37,16 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 6), (3, 7),                            -- STAFF chỉ VIEW + CREATE
 (4, 6),                                    -- AUDITOR chỉ VIEW
 (5, 6);                                    -- VIEWER chỉ VIEW_COMPANY
+
+ INSERT INTO permissions (code, name, type, parent_id, created_at, updated_at) VALUES
+    ('CREATE_REPORT', 'Tạo báo cáo', 'CREATE', NULL, NOW(), NOW()),
+    ('UPDATE_REPORT', 'Cập nhật báo cáo', 'UPDATE', NULL, NOW(), NOW()),
+    ('APPROVE_REPORT', 'Duyệt báo cáo', 'UPDATE', NULL, NOW(), NOW()),
+    ('REJECT_REPORT', 'Từ chối báo cáo', 'UPDATE', NULL, NOW(), NOW());
+
+    -- Gán cho roles (giả sử các permission trên có id 11-14)
+    -- VIEW_REPORT (id=5) đã có, gán thêm cho các role phù hợp
+    INSERT INTO role_permissions (role_id, permission_id) VALUES
+    (1, 11), (1, 12), (1, 13), (1, 14),  -- ADMIN có tất cả
+    (2, 11), (2, 12), (2, 13), (2, 14),  -- MANAGER (Sở) có tất cả
+    (3, 11), (3, 12);                     -- STAFF chỉ tạo + cập nhật

@@ -1,22 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { Response } from 'src/common';
+import {
+  ReportPeriod,
+  ReportPeriodStatus,
+} from 'src/modules/report_periods/entities/report_periods.entity';
+import { DataSource, FindOptionsWhere, ILike, In, Repository } from 'typeorm';
+import { Company } from '../company/entities/company.entity';
+import { AccidentDetailDto } from './dto/accident-detail.dto';
+import { AccidentStatisticDto } from './dto/accident-statistic.dto';
+import { ApproveRejectDto } from './dto/approve-reject.dto';
+import { CreateReportDto } from './dto/create-report.dto';
+import { QueryReportDto } from './dto/QueryReportDto';
+import { UpdateReportDto } from './dto/update-report.dto';
+import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import {
   ReportCategory,
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
-import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
-import {
-  ReportPeriod,
-  ReportPeriodStatus,
-} from 'src/modules/report_periods/entities/report_periods.entity';
-import { Company } from '../company/entities/company.entity';
-import { Response } from 'src/common';
-import { AccidentStatisticDto } from './dto/accident-statistic.dto';
-import { AccidentDetailDto } from './dto/accident-detail.dto';
-import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportDto } from './dto/update-report.dto';
 
 @Injectable()
 export class ReportsService {
@@ -398,5 +400,168 @@ export class ReportsService {
       totalDaysOff: dto.total_leave_days,
       propertyDamage: dto.property_damage_expenses,
     });
+  }
+
+  //so//
+
+  async getAllReport(query: QueryReportDto) {
+    const {
+      page = 1,
+      limit = 10,
+      companyName,
+      taxCode,
+      reportPeriodId,
+      year,
+      status,
+    } = query;
+
+    const where: FindOptionsWhere<Report> = {};
+
+    if (companyName) {
+      where.company = { companyName: ILike(`%${companyName}%`) };
+    }
+    if (taxCode) {
+      where.company = {
+        ...(where.company as object),
+        taxCode: ILike(`%${taxCode}%`),
+      };
+    }
+    if (reportPeriodId) {
+      where.reportPeriodId = reportPeriodId;
+    }
+    if (year) {
+      where.reportPeriod = { year };
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    const [data, total] = await this.reportRepo.findAndCount({
+      where,
+      relations: {
+        company: true,
+        reportPeriod: true,
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return Response.success(
+      {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+      'Lấy danh sách báo cáo thành công',
+    );
+  }
+  async getReportByIdForSo(reportId: number): Promise<Report> {
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId },
+      relations: {
+        company: true,
+        reportPeriod: true,
+        statistics: {
+          accidentDetails: {
+            accidentCause: true,
+            injuryFactor: true,
+            profession: true,
+          },
+        },
+        approver: true,
+      },
+    });
+    if (!report) {
+      throw Response.errorNotFound('Không tìm thấy báo cáo');
+    }
+    return report;
+  }
+
+  // Sở duyệt nhiều báo cáo
+  async approveReports(
+    approverAccountId: number,
+    dto: ApproveRejectDto,
+  ): Promise<object> {
+    const reports = await this.reportRepo.find({
+      where: { id: In(dto.reportIds) },
+    });
+
+    // Kiểm tra tất cả ID có tồn tại không
+    if (reports.length !== dto.reportIds.length) {
+      throw Response.errorNotFound('Một hoặc nhiều báo cáo không tồn tại');
+    }
+
+    // Chỉ duyệt được báo cáo ở trạng thái SUBMITTED
+    const invalidReports = reports.filter(
+      (r) => r.status !== ReportStatus.SUBMITTED,
+    );
+    if (invalidReports.length > 0) {
+      throw Response.errorBad(
+        `Các báo cáo sau không ở trạng thái chờ duyệt: ${invalidReports.map((r) => r.id).join(', ')}`,
+      );
+    }
+
+    const now = new Date();
+    await this.reportRepo.update(
+      { id: In(dto.reportIds) },
+      {
+        status: ReportStatus.APPROVED,
+        approvedBy: approverAccountId,
+        approvedAt: now,
+        note: null,
+      },
+    );
+
+    return Response.success(
+      { approvedIds: dto.reportIds },
+      `Đã duyệt ${dto.reportIds.length} báo cáo thành công`,
+    );
+  }
+
+  // Sở từ chối nhiều báo cáo
+  async rejectReports(
+    approverAccountId: number,
+    dto: ApproveRejectDto,
+  ): Promise<object> {
+    if (!dto.note || dto.note.trim() === '') {
+      throw Response.errorBad('Lý do từ chối không được để trống');
+    }
+
+    const reports = await this.reportRepo.find({
+      where: { id: In(dto.reportIds) },
+    });
+
+    if (reports.length !== dto.reportIds.length) {
+      throw Response.errorNotFound('Một hoặc nhiều báo cáo không tồn tại');
+    }
+
+    const invalidReports = reports.filter(
+      (r) => r.status !== ReportStatus.SUBMITTED,
+    );
+    if (invalidReports.length > 0) {
+      throw Response.errorBad(
+        `Các báo cáo sau không ở trạng thái chờ duyệt: ${invalidReports.map((r) => r.id).join(', ')}`,
+      );
+    }
+
+    await this.reportRepo.update(
+      { id: In(dto.reportIds) },
+      {
+        status: ReportStatus.REJECTED,
+        approvedBy: approverAccountId,
+        approvedAt: new Date(),
+        note: dto.note.trim(),
+      },
+    );
+
+    return Response.success(
+      { rejectedIds: dto.reportIds },
+      `Đã từ chối ${dto.reportIds.length} báo cáo`,
+    );
   }
 }

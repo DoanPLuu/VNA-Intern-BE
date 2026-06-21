@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'src/common';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { CreateReportPeriodDto } from './dto/CreateReportPeriodDto';
 import { UpdateReportPeriodDto } from './dto/UpdateReportPeriodDto';
 import {
   ReportPeriod,
   ReportPeriodStatus,
 } from './entities/report_periods.entity';
+import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
+import { ILike } from 'typeorm/browser';
+import { Between } from 'typeorm/browser';
 @Injectable()
 export class ReportPeriodService {
   constructor(
@@ -15,13 +18,61 @@ export class ReportPeriodService {
     private readonly reportRepo: Repository<ReportPeriod>,
   ) {}
 
-  async getAllReport() {
-    const report = await this.reportRepo.find({
-      order: { createdAt: 'ASC' },
+  async getAllReport(query: QueryReportPeriodDto) {
+    const {
+      page = 1,
+      limit = 10,
+      name,
+      year,
+      quarter,
+      startDate,
+      endDate,
+      status,
+    } = query;
+
+    const where: FindOptionsWhere<ReportPeriod> = {};
+
+    if (name) {
+      where.name = ILike(`%${name}%`);
+    }
+    if (year) {
+      where.year = year;
+    }
+    if (quarter) {
+      where.quarter = quarter;
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (startDate) {
+      where.startDate = startDate;
+    }
+    if (endDate) {
+      where.endDate = endDate;
+    }
+    // Lọc theo khoảng thời gian nếu có cả startDate và endDate
+    if (startDate && endDate) {
+      where.startDate = Between(startDate, endDate);
+    }
+
+    const [data, total] = await this.reportRepo.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
     return Response.success(
-      report,
-      'Lấy danh sách cấu hình báo cáo thành công',
+      {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+      'Lấy danh sách kỳ báo cáo thành công',
     );
   }
   async getById(reportId: number) {

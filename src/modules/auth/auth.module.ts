@@ -27,6 +27,7 @@ import { Account } from './entities/account.entity';
     ]),
     UserModule,
     CompanyModule,
+
     JwtModule.register({}),
   ],
   controllers: [AuthController],

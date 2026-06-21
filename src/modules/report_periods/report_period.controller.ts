@@ -6,34 +6,48 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { CreateReportPeriodDto } from './dto/CreateReportPeriodDto';
+import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
 import { UpdateReportPeriodDto } from './dto/UpdateReportPeriodDto';
 import { ReportPeriodService } from './report_period.service';
 
-@ApiTags('ReportPeriod')
-@Controller('reportPeriod')
+@ApiTags('report-periods')
+@Controller('report-periods')
 export class ReportPeriodController {
   constructor(private readonly ReportPeriodService: ReportPeriodService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách cấu hình báo cáo' })
-  getReportPeriod() {
-    return this.ReportPeriodService.getAllReport();
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy danh sách kỳ báo cáo (có phân trang & tìm kiếm)',
+  })
+  getReportPeriod(@Query() query: QueryReportPeriodDto) {
+    return this.ReportPeriodService.getAllReport(query);
   }
 
-  @Get('report-periods/:id/')
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy báo cáo theo Id' })
   getReportPeriodById(@Param('id', ParseIntPipe) id: number) {
     return this.ReportPeriodService.getById(id);
   }
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Tạo cấu trúc báo cáo' })
   createReportPeriod(@Body() dto: CreateReportPeriodDto) {
     return this.ReportPeriodService.createReportPeriod(dto);
   }
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Sửa cấu trúc báo cáo' })
   updateReportPeriod(
     @Body() dto: UpdateReportPeriodDto,

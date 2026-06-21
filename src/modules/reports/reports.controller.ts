@@ -6,16 +6,20 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ReportsService } from './reports.service';
-import { CreateReportDto } from './dto/create-report.dto';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
+import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { AccountType } from '../auth/entities/account.entity';
+import { ApproveRejectDto } from './dto/approve-reject.dto';
+import { CreateReportDto } from './dto/create-report.dto';
+import { QueryReportDto } from './dto/QueryReportDto';
 import { UpdateReportDto } from './dto/update-report.dto';
-
+import { ReportsService } from './reports.service';
 interface JwtPayload {
   sub: number;
   username: string;
@@ -75,5 +79,44 @@ export class ReportsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.reportsService.submitReport(req.user.sub, id);
+  }
+  //so//
+  @Get('so')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('VIEW_REPORT')
+  @ApiOperation({ summary: '[Sở] Xem danh sách tất cả báo cáo' })
+  getAllReports(@Query() query: QueryReportDto) {
+    return this.reportsService.getAllReport(query);
+  }
+
+  // GET /reports/so/:id — Sở xem chi tiết 1 báo cáo
+  @Get('so/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('VIEW_REPORT')
+  @ApiOperation({ summary: '[Sở] Xem chi tiết báo cáo' })
+  getOneForSo(@Param('id', ParseIntPipe) id: number) {
+    return this.reportsService.getReportByIdForSo(id);
+  }
+
+  // PATCH /reports/approve — Sở duyệt 1 hoặc nhiều báo cáo
+  @Patch('approve')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('APPROVE_REPORT')
+  @ApiOperation({
+    summary: '[Sở] Duyệt 1 hoặc nhiều báo cáo (SUBMITTED → APPROVED)',
+  })
+  approve(@Req() req: AuthenticatedRequest, @Body() dto: ApproveRejectDto) {
+    return this.reportsService.approveReports(req.user.sub, dto);
+  }
+
+  // PATCH /reports/reject — Sở từ chối 1 hoặc nhiều báo cáo
+  @Patch('reject')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('REJECT_REPORT')
+  @ApiOperation({
+    summary: '[Sở] Từ chối 1 hoặc nhiều báo cáo (SUBMITTED → REJECTED)',
+  })
+  reject(@Req() req: AuthenticatedRequest, @Body() dto: ApproveRejectDto) {
+    return this.reportsService.rejectReports(req.user.sub, dto);
   }
 }
