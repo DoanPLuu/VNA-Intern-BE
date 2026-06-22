@@ -68,6 +68,13 @@ export class Report {
   })
   totalSalaryFund: number | null;
 
+  // Đường dẫn file báo cáo TNLĐ có dấu mộc công ty
+  @Column({ name: 'attachment_url', type: 'varchar', nullable: true })
+  attachmentUrl: string | null;
+
+  @Column({ name: 'attachment_name', type: 'varchar', nullable: true })
+  attachmentName: string | null;
+
   // ----- Quy trình nộp/duyệt -----
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
   submittedAt: Date | null;

@@ -13,6 +13,7 @@ import { ApproveRejectDto } from './dto/approve-reject.dto';
 import { CreateReportDto } from './dto/create-report.dto';
 import { QueryReportDto } from './dto/QueryReportDto';
 import { SummaryQueryDto } from './dto/summary-report.dto';
+import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import {
@@ -20,6 +21,7 @@ import {
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
+
 interface SectionOneRaw {
   businessTypeId: string;
   businessTypeCode: string;
@@ -163,6 +165,31 @@ export class ReportsService {
 
       return savedReport;
     });
+  }
+
+  // 2. Đính kèm file báo cáo
+  async updateAttachment(
+    accountId: number,
+    reportId: number,
+    dto: UpdateAttachmentDto,
+  ): Promise<Report> {
+    const company = await this.getCompanyByAccountId(accountId);
+
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, companyId: company.id },
+    });
+    if (!report) {
+      throw Response.errorNotFound('Không tìm thấy báo cáo');
+    }
+    if (report.status === ReportStatus.APPROVED) {
+      throw Response.errorBad(
+        'Báo cáo đã được duyệt, không thể thay đổi file đính kèm',
+      );
+    }
+
+    report.attachmentUrl = dto.attachment_url;
+    report.attachmentName = dto.attachment_name;
+    return this.reportRepo.save(report);
   }
 
   // 2. Nộp Báo Cáo (DRAFT -> SUBMITTED)
