@@ -20,6 +20,7 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { QueryReportDto } from './dto/QueryReportDto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
+import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 interface JwtPayload {
   sub: number;
   username: string;
@@ -69,6 +70,17 @@ export class ReportsController {
     @Body() dto: UpdateReportDto,
   ) {
     return this.reportsService.updateReport(req.user.sub, id, dto);
+  }
+
+  // PATCH /reports/:id/attachment
+  @Patch(':id/attachment')
+  @ApiOperation({ summary: 'Đính kèm file báo cáo có dấu mộc' })
+  updateAttachment(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateAttachmentDto,
+  ) {
+    return this.reportsService.updateAttachment(req.user.sub, id, dto);
   }
 
   // PATCH /reports/:id/submit
