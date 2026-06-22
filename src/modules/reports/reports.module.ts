@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ReportsService } from './reports.service';
-import { ReportsController } from './reports.controller';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import { ReportPeriod } from 'src/modules/report_periods/entities/report_periods.entity';
+import { Company } from '../company/entities/company.entity';
+import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import { ReportStatistic } from './entities/report-statistic.entity';
 import { Report } from './entities/report.entity';
-import { Company } from '../company/entities/company.entity';
-import { JwtModule } from '@nestjs/jwt';
+import { ReportsController } from './reports.controller';
+import { ReportsService } from './reports.service';
+import { SoReportsController } from './so-reports.controller';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { JwtModule } from '@nestjs/jwt';
     ]),
     JwtModule.register({}),
   ],
-  controllers: [ReportsController],
+  controllers: [ReportsController, SoReportsController],
   providers: [ReportsService],
 })
 export class ReportsModule {}

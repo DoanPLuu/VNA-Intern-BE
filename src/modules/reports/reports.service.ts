@@ -12,6 +12,7 @@ import { AccidentStatisticDto } from './dto/accident-statistic.dto';
 import { ApproveRejectDto } from './dto/approve-reject.dto';
 import { CreateReportDto } from './dto/create-report.dto';
 import { QueryReportDto } from './dto/QueryReportDto';
+import { SummaryQueryDto } from './dto/summary-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
 import {
@@ -19,7 +20,46 @@ import {
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
+interface SectionOneRaw {
+  businessTypeId: string;
+  businessTypeCode: string;
+  businessTypeName: string;
+  totalCompanies: string;
+  totalEmployees: string;
+  femaleEmployees: string;
+  totalIncidents: string;
+  incidentsWithFatalities: string;
+  incidentsWithMultipleVictims: string;
+  totalVictims: string;
+  totalFemaleVictims: string;
+  totalFatalities: string;
+  totalSevereInjuries: string;
+  totalDaysOff: string;
+  medicalCosts: string;
+  treatmentSalaryCosts: string;
+  compensationCosts: string;
+  totalCosts: string;
+  propertyDamage: string;
+}
 
+interface SectionTwoRaw {
+  categoryId: string;
+  categoryCode: string;
+  categoryName: string;
+  totalIncidents: string;
+  incidentsWithFatalities: string;
+  incidentsWithMultipleVictims: string;
+  totalVictims: string;
+  totalFemaleVictims: string;
+  totalFatalities: string;
+  totalSevereInjuries: string;
+  totalDaysOff: string;
+  medicalCosts: string;
+  treatmentSalaryCosts: string;
+  compensationCosts: string;
+  totalCosts: string;
+  propertyDamage: string;
+}
 @Injectable()
 export class ReportsService {
   constructor(
@@ -562,6 +602,247 @@ export class ReportsService {
     return Response.success(
       { rejectedIds: dto.reportIds },
       `Đã từ chối ${dto.reportIds.length} báo cáo`,
+    );
+  }
+  async getSummaryReport(query: SummaryQueryDto) {
+    const { reportPeriodId } = query;
+
+    if (!reportPeriodId) {
+      throw Response.errorBad('Vui lòng chọn kỳ báo cáo');
+    }
+
+    // ─── PHẦN I: Tổng hợp theo loại hình cơ sở ───────────────────────────
+    const sectionOneRaw = await this.reportRepo
+      .createQueryBuilder('r')
+
+      .innerJoin('r.company', 'c')
+      .innerJoin('c.businessType', 'bt')
+      .innerJoin('r.statistics', 'rs', "rs.reportCategory = 'GENERAL'")
+      .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
+      .andWhere('r.status IN (:...statuses)', {
+        statuses: ['SUBMITTED', 'APPROVED'],
+      })
+      .select([
+        'bt.id                                   AS "businessTypeId"',
+        'bt.code                                 AS "businessTypeCode"',
+        'bt.name                                 AS "businessTypeName"',
+        'COUNT(DISTINCT r.id)                    AS "totalCompanies"',
+        'SUM(r."total_employees")               AS "totalEmployees"',
+        'SUM(r."total_female_employees")        AS "femaleEmployees"',
+        'SUM(rs."total_incidents")              AS "totalIncidents"',
+        'SUM(rs."incidents_with_fatalities")    AS "incidentsWithFatalities"',
+        'SUM(rs."incidents_with_multiple_victims") AS "incidentsWithMultipleVictims"',
+        'SUM(rs."total_victims")                AS "totalVictims"',
+        'SUM(rs."total_female_victims")         AS "totalFemaleVictims"',
+        'SUM(rs."total_fatalities")             AS "totalFatalities"',
+        'SUM(rs."total_severe_injuries")        AS "totalSevereInjuries"',
+        'SUM(rs."total_days_off")               AS "totalDaysOff"',
+        'SUM(rs."medical_costs")                AS "medicalCosts"',
+        'SUM(rs."treatment_salary_costs")       AS "treatmentSalaryCosts"',
+        'SUM(rs."compensation_costs")           AS "compensationCosts"',
+        'SUM(rs."total_costs")                  AS "totalCosts"',
+        'SUM(rs."property_damage")              AS "propertyDamage"',
+      ])
+      .groupBy('bt.id')
+      .addGroupBy('bt.code')
+      .addGroupBy('bt.name')
+      .orderBy('bt.code', 'ASC')
+      .getRawMany<SectionOneRaw>();
+
+    // Map + tính thêm KTNLĐ và KChết
+    const sectionOneRows = sectionOneRaw.map((row) => {
+      const totalEmployees = Number(row.totalEmployees) || 0;
+      const totalIncidents = Number(row.totalIncidents) || 0;
+      const totalFatalities = Number(row.totalFatalities) || 0;
+      return {
+        businessTypeId: row.businessTypeId,
+        businessTypeCode: row.businessTypeCode,
+        businessTypeName: row.businessTypeName,
+        totalCompanies: Number(row.totalCompanies) || 0,
+        totalEmployees,
+        femaleEmployees: Number(row.femaleEmployees) || 0,
+        totalIncidents,
+        incidentsWithFatalities: Number(row.incidentsWithFatalities) || 0,
+        incidentsWithMultipleVictims:
+          Number(row.incidentsWithMultipleVictims) || 0,
+        totalVictims: Number(row.totalVictims) || 0,
+        totalFemaleVictims: Number(row.totalFemaleVictims) || 0,
+        totalFatalities,
+        totalSevereInjuries: Number(row.totalSevereInjuries) || 0,
+        totalDaysOff: Number(row.totalDaysOff) || 0,
+        medicalCosts: Number(row.medicalCosts) || 0,
+        treatmentSalaryCosts: Number(row.treatmentSalaryCosts) || 0,
+        compensationCosts: Number(row.compensationCosts) || 0,
+        totalCosts: Number(row.totalCosts) || 0,
+        propertyDamage: Number(row.propertyDamage) || 0,
+        // Tần suất tai nạn lao động
+        ktnld:
+          totalEmployees > 0
+            ? Math.round((totalIncidents / totalEmployees) * 1000 * 100) / 100
+            : 0,
+        kChet:
+          totalEmployees > 0
+            ? Math.round((totalFatalities / totalEmployees) * 1000 * 100) / 100
+            : 0,
+      };
+    });
+
+    // Dòng TỔNG SỐ của Phần I
+    const sectionOneTotal = sectionOneRows.reduce(
+      (acc, row) => ({
+        businessTypeCode: 'TOTAL',
+        businessTypeName: 'Tổng số',
+        totalCompanies: acc.totalCompanies + row.totalCompanies,
+        totalEmployees: acc.totalEmployees + row.totalEmployees,
+        femaleEmployees: acc.femaleEmployees + row.femaleEmployees,
+        totalIncidents: acc.totalIncidents + row.totalIncidents,
+        incidentsWithFatalities:
+          acc.incidentsWithFatalities + row.incidentsWithFatalities,
+        incidentsWithMultipleVictims:
+          acc.incidentsWithMultipleVictims + row.incidentsWithMultipleVictims,
+        totalVictims: acc.totalVictims + row.totalVictims,
+        totalFemaleVictims: acc.totalFemaleVictims + row.totalFemaleVictims,
+        totalFatalities: acc.totalFatalities + row.totalFatalities,
+        totalSevereInjuries: acc.totalSevereInjuries + row.totalSevereInjuries,
+        totalDaysOff: acc.totalDaysOff + row.totalDaysOff,
+        medicalCosts: acc.medicalCosts + row.medicalCosts,
+        treatmentSalaryCosts:
+          acc.treatmentSalaryCosts + row.treatmentSalaryCosts,
+        compensationCosts: acc.compensationCosts + row.compensationCosts,
+        totalCosts: acc.totalCosts + row.totalCosts,
+        propertyDamage: acc.propertyDamage + row.propertyDamage,
+        ktnld: 0,
+        kChet: 0,
+      }),
+      {
+        businessTypeCode: 'TOTAL',
+        businessTypeName: 'Tổng số',
+        totalCompanies: 0,
+        totalEmployees: 0,
+        femaleEmployees: 0,
+        totalIncidents: 0,
+        incidentsWithFatalities: 0,
+        incidentsWithMultipleVictims: 0,
+        totalVictims: 0,
+        totalFemaleVictims: 0,
+        totalFatalities: 0,
+        totalSevereInjuries: 0,
+        totalDaysOff: 0,
+        medicalCosts: 0,
+        treatmentSalaryCosts: 0,
+        compensationCosts: 0,
+        totalCosts: 0,
+        propertyDamage: 0,
+        ktnld: 0,
+        kChet: 0,
+      },
+    );
+    // Tính lại KTNLĐ, KChết cho dòng tổng
+    sectionOneTotal.ktnld =
+      sectionOneTotal.totalEmployees > 0
+        ? Math.round(
+            (sectionOneTotal.totalIncidents / sectionOneTotal.totalEmployees) *
+              1000 *
+              100,
+          ) / 100
+        : 0;
+    sectionOneTotal.kChet =
+      sectionOneTotal.totalEmployees > 0
+        ? Math.round(
+            (sectionOneTotal.totalFatalities / sectionOneTotal.totalEmployees) *
+              1000 *
+              100,
+          ) / 100
+        : 0;
+
+    // ─── PHẦN II: Hàm helper tổng hợp theo danh mục ─────────────────────
+    const buildSectionTwoByField = async (
+      groupField: 'accidentCauseId' | 'injuryFactorId' | 'professionId',
+      joinTable: string,
+      joinAlias: string,
+    ) => {
+      const raw = await this.reportAccidentDetailRepo
+        .createQueryBuilder('d')
+        .innerJoin('d.reportStatistic', 'rs')
+        .innerJoin('rs.report', 'r')
+        .leftJoin(`d.${joinAlias}`, 'cat')
+        .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
+        .andWhere('r.status IN (:...statuses)', {
+          statuses: ['SUBMITTED', 'APPROVED'],
+        })
+        .select([
+          'cat.id                                       AS "categoryId"',
+          'cat.code                                     AS "categoryCode"',
+          'cat.name                                     AS "categoryName"',
+          'SUM(d."total_incidents")                    AS "totalIncidents"',
+          'SUM(d."incidents_with_fatalities")          AS "incidentsWithFatalities"',
+          'SUM(d."incidents_with_multiple_victims")    AS "incidentsWithMultipleVictims"',
+          'SUM(d."total_victims")                      AS "totalVictims"',
+          'SUM(d."total_female_victims")               AS "totalFemaleVictims"',
+          'SUM(d."total_fatalities")                   AS "totalFatalities"',
+          'SUM(d."total_severe_injuries")              AS "totalSevereInjuries"',
+          'SUM(d."total_days_off")                     AS "totalDaysOff"',
+          'SUM(d."medical_costs")                      AS "medicalCosts"',
+          'SUM(d."treatment_salary_costs")             AS "treatmentSalaryCosts"',
+          'SUM(d."compensation_costs")                 AS "compensationCosts"',
+          'SUM(d."total_costs")                        AS "totalCosts"',
+          'SUM(d."property_damage")                    AS "propertyDamage"',
+        ])
+        .groupBy('cat.id')
+        .addGroupBy('cat.code')
+        .addGroupBy('cat.name')
+        .orderBy('cat.code', 'ASC')
+        .getRawMany<SectionTwoRaw>();
+
+      return raw.map((row) => ({
+        categoryId: row.categoryId,
+        categoryCode: row.categoryCode,
+        categoryName: row.categoryName,
+        totalIncidents: Number(row.totalIncidents) || 0,
+        incidentsWithFatalities: Number(row.incidentsWithFatalities) || 0,
+        incidentsWithMultipleVictims:
+          Number(row.incidentsWithMultipleVictims) || 0,
+        totalVictims: Number(row.totalVictims) || 0,
+        totalFemaleVictims: Number(row.totalFemaleVictims) || 0,
+        totalFatalities: Number(row.totalFatalities) || 0,
+        totalSevereInjuries: Number(row.totalSevereInjuries) || 0,
+        totalDaysOff: Number(row.totalDaysOff) || 0,
+        medicalCosts: Number(row.medicalCosts) || 0,
+        treatmentSalaryCosts: Number(row.treatmentSalaryCosts) || 0,
+        compensationCosts: Number(row.compensationCosts) || 0,
+        totalCosts: Number(row.totalCosts) || 0,
+        propertyDamage: Number(row.propertyDamage) || 0,
+      }));
+    };
+
+    // Chạy song song 3 nhóm của Phần II
+    const [byProfession, byAccidentCause, byInjuryFactor] = await Promise.all([
+      buildSectionTwoByField('professionId', 'professions', 'profession'),
+      buildSectionTwoByField(
+        'accidentCauseId',
+        'accident_causes',
+        'accidentCause',
+      ),
+      buildSectionTwoByField(
+        'injuryFactorId',
+        'injury_factors',
+        'injuryFactor',
+      ),
+    ]);
+
+    return Response.success(
+      {
+        sectionOne: {
+          total: sectionOneTotal,
+          rows: sectionOneRows,
+        },
+        sectionTwo: {
+          byProfession,
+          byAccidentCause,
+          byInjuryFactor,
+        },
+      },
+      'Lấy báo cáo tổng hợp thành công',
     );
   }
 }
