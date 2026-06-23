@@ -6,6 +6,7 @@ import { Profession } from './entities/profession.entity';
 import { InjuryFactor } from './entities/injury-factor.entity';
 import { InjuryType } from './entities/injury-type.entity';
 import { AccidentCause } from './entities/account-cause.entity';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AccidentCause } from './entities/account-cause.entity';
       InjuryType,
       AccidentCause,
     ]),
+    JwtModule.register({}),
   ],
   controllers: [CategoryController],
   providers: [CategoryService],
