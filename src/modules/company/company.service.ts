@@ -1085,12 +1085,94 @@ export class CompanyService {
 
   // REGISTER DN──────────────────────────────────────────
   async registerCompany(dto: CreateCompany) {
-    // Kiểm tra trùng lặp
-    await this.checkDuplicates(dto);
+    // Kiểm tra đã có account PENDING với tax_code này chưa
+    const existingCompany = await this.companyRepo.findOne({
+      where: { taxCode: dto.tax_code },
+      relations: { account: true },
+    });
 
-    // Resolve lookups
+    if (existingCompany) {
+      // Đã tồn tại và không phải PENDING → báo lỗi trùng bình thường
+      if (existingCompany.status !== CompanyStatus.PENDING) {
+        throw ApiResponse.errorDuplicated('Mã số thuế đã tồn tại');
+      }
+
+      // Đang PENDING → người dùng quay lại sửa thông tin, cập nhật lại
+      const account = existingCompany.account;
+
+      // Kiểm tra email mới có trùng với account KHÁC không
+      if (dto.email !== account.email) {
+        const emailExists = await this.accountRepo.findOne({
+          where: { email: dto.email },
+        });
+        if (emailExists && emailExists.id !== account.id) {
+          throw ApiResponse.errorDuplicated('Email đã tồn tại');
+        }
+      }
+
+      // Resolve lookups để cập nhật lại thông tin công ty
+      const resolved = await this.resolveLookups(dto);
+      const {
+        businessType,
+        businessIndustry,
+        provinceDKKD,
+        wardDKKD,
+        provinceHDKD,
+        wardHDKD,
+      } = resolved;
+
+      // Cập nhật lại account
+      await this.accountRepo.update({ id: account.id }, { email: dto.email });
+
+      // Cập nhật lại company
+      await this.companyRepo.update(
+        { id: existingCompany.id },
+        {
+          companyName: dto.business_name,
+          foreignCompanyName: dto.foreign_business_name ?? null,
+          businessTypeId: businessType.id,
+          businessIndustryId: businessIndustry.id,
+          licenseIssueDate: dto.license_issue_date ?? null,
+          provinceDkkdId: provinceDKKD.id,
+          wardDkkdId: wardDKKD.id,
+          addressDkkd: dto.license_registration_adress,
+          businessPhone: dto.business_phone ?? null,
+          representativeName: dto.representative_name ?? null,
+          representativePhone: dto.representative_phone ?? null,
+          provinceHdkdId: provinceHDKD?.id ?? null,
+          wardHdkdId: wardHDKD?.id ?? null,
+          addressHdkd: dto.business_operating_adress ?? null,
+          gpkdFilePath: dto.business_license_file_url ?? null,
+          gtkFilePath: dto.other_document_file_url ?? null,
+        },
+      );
+
+      // Vô hiệu hóa OTP cũ chưa dùng
+      await this.otpCodeRepo.update(
+        { accountId: account.id, type: OtpType.REGISTER_DN, isUsed: false },
+        { isUsed: true },
+      );
+
+      // Trả về để AuthService gửi OTP mới
+      return {
+        accountId: account.id,
+        email: dto.email,
+        username: account.username,
+        rawPassword: '12345678',
+      };
+    }
+
+    // ── Chưa có → kiểm tra email rồi tạo mới bình thường ────────
+    if (dto.email) {
+      const existAccount = await this.accountRepo.findOne({
+        where: { email: dto.email },
+      });
+      if (existAccount) {
+        throw ApiResponse.errorDuplicated('Email đã tồn tại');
+      }
+    }
+
     const resolved = await this.resolveLookups(dto);
-
     const {
       businessType,
       businessIndustry,
@@ -1100,7 +1182,6 @@ export class CompanyService {
       wardHDKD,
     } = resolved;
 
-    // Tạo Account với isActive: false — chờ xác nhận OTP
     const rawPassword = '12345678';
     const account = this.accountRepo.create({
       username: dto.tax_code,
@@ -1112,7 +1193,6 @@ export class CompanyService {
     });
     const savedAccount = await this.accountRepo.save(account);
 
-    // Tạo Company với status: PENDING
     const company = this.companyRepo.create({
       accountId: savedAccount.id,
       companyName: dto.business_name,
@@ -1135,6 +1215,7 @@ export class CompanyService {
       status: CompanyStatus.PENDING,
     });
     await this.companyRepo.save(company);
+
     return {
       accountId: savedAccount.id,
       email: dto.email,
