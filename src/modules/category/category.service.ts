@@ -26,7 +26,6 @@ export class CategoryService {
   ) {}
   async getAllInjuryFactor() {
     return await this.InjuryFactorRepo.find({
-      where: { status: true },
       select: {
         id: true,
         code: true,
@@ -76,12 +75,13 @@ export class CategoryService {
 
   async getAllInjuryType() {
     return await this.InjuryTypeRepo.find({
-      where: { status: true, level: 'Cấp 1' },
+      where: { level: 'Cấp 1' },
       select: {
         id: true,
         code: true,
         name: true,
         level: true,
+        status: true,
       },
       relations: { children: true },
       order: {
@@ -136,12 +136,12 @@ export class CategoryService {
 
   async getAllProfession() {
     return await this.ProfessionRepo.find({
-      where: { status: true },
       select: {
         id: true,
         code: true,
         name: true,
         level: true,
+        status: true,
       },
       order: {
         code: 'ASC',
