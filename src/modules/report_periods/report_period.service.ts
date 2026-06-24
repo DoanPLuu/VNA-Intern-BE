@@ -2,15 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'src/common';
 import { FindOptionsWhere, Repository } from 'typeorm';
+import { Between, ILike } from 'typeorm/browser';
 import { CreateReportPeriodDto } from './dto/CreateReportPeriodDto';
+import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
 import { UpdateReportPeriodDto } from './dto/UpdateReportPeriodDto';
+import { UpdateStatus } from './dto/UpdateStatusDto';
 import {
   ReportPeriod,
   ReportPeriodStatus,
 } from './entities/report_periods.entity';
-import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
-import { ILike } from 'typeorm/browser';
-import { Between } from 'typeorm/browser';
 @Injectable()
 export class ReportPeriodService {
   constructor(
@@ -160,5 +160,16 @@ export class ReportPeriodService {
     const updated = await this.reportRepo.save(reportPeriod);
 
     return Response.success(updated, 'Cập nhật kỳ báo cáo thành công');
+  }
+  async updateStatus(id: number, dto: UpdateStatus) {
+    const data = await this.reportRepo.findOne({
+      where: {
+        id,
+      },
+    });
+    if (!data) throw Response.errorNotFound('Không tìm thấy kì báo cáo');
+    data.status = dto.status ?? data.status;
+    const update = await this.reportRepo.save(data);
+    return Response.success(update, 'Cập nhật trạng thái thành công');
   }
 }

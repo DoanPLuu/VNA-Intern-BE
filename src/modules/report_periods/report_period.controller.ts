@@ -14,6 +14,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { CreateReportPeriodDto } from './dto/CreateReportPeriodDto';
 import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
 import { UpdateReportPeriodDto } from './dto/UpdateReportPeriodDto';
+import { UpdateStatus } from './dto/UpdateStatusDto';
 import { ReportPeriodService } from './report_period.service';
 
 @ApiTags('report-periods')
@@ -54,5 +55,15 @@ export class ReportPeriodController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.ReportPeriodService.updateReportPeriod(id, dto);
+  }
+  @Patch(':id/delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Sửa cấu trúc báo cáo' })
+  updateStatusReportPeriod(
+    @Body() dto: UpdateStatus,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.ReportPeriodService.updateStatus(id, dto);
   }
 }
