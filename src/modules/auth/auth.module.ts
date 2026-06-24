@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MailService } from 'src/common/mail/mail.service';
 import { OtpCode } from '../user/entities/otp-code.entity';
-import { RefreshToken } from '../user/entities/refresh-token.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 
 import { CompanyModule } from '../company/company.module';
 import { Role } from '../role/entities/role.entity';
@@ -14,6 +14,7 @@ import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Account } from './entities/account.entity';
+import { SessionModule } from '../session/session.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Account } from './entities/account.entity';
     ]),
     UserModule,
     CompanyModule,
+    SessionModule,
 
     JwtModule.register({}),
   ],

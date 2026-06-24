@@ -11,12 +11,13 @@ import { CreateCompany } from '../company/dto/company.dto';
 import { Role } from '../role/entities/role.entity';
 import { EmailChangeSession } from '../user/entities/email-change-session.entity';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
-import { RefreshToken } from '../user/entities/refresh-token.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account, AccountType } from './entities/account.entity';
+import { SessionService } from '../session/session.service';
 @Injectable()
 export class AuthService {
   constructor(
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly mailService: MailService,
+    private readonly sessionService: SessionService,
   ) {}
 
   async findAccountByUserName(username: string): Promise<Account | null> {
@@ -254,6 +256,7 @@ export class AuthService {
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
     account.password = newPasswordHash;
     await this.accountRepo.save(account);
+    await this.sessionService.invalidateAccountSessions(accountId);
     return Response.success(null, 'Đổi mật khẩu thành công');
   }
   async requestChangeEmail(accountId: number) {

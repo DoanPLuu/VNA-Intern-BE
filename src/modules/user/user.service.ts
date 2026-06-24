@@ -18,6 +18,7 @@ import { ToggleUserActiveDto } from './dto/ToggleUserActive.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
+import { SessionService } from '../session/session.service';
 
 type ImportUserRow = {
   rowNumber: number;
@@ -57,6 +58,7 @@ export class UserService {
     private readonly locationService: LocationService,
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
+    private readonly sessionService: SessionService,
   ) {}
 
   // ── Tìm kiếm ────────────────────────────────────────────────
@@ -1368,25 +1370,23 @@ export class UserService {
 
     const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
 
-    await this.accountRepo.update(
-      { id: accountId },
-      { password: newPasswordHash },
-    );
-    // await this.accountRepo.manager.transaction(async (manager) => {
-    //   const accountRepo = manager.getRepository(Account);
-    //   const refreshTokenRepo = manager.getRepository(RefreshToken);
-
-    //   await accountRepo.update(
-    //     { id: accountId },
-    //     { password: newPasswordHash },
-    //   );
-
-    // await refreshTokenRepo.update(
-    //   { accountId, isRevoked: false },
-    //   { isRevoked: true },
+    // await this.accountRepo.update(
+    //   { id: accountId },
+    //   { password: newPasswordHash },
     // );
-    // });
 
+    await this.accountRepo.manager.transaction(async (manager) => {
+      const accountRepo = manager.getRepository(Account);
+
+      await accountRepo.update(
+        { id: accountId },
+        { password: newPasswordHash },
+      );
+
+      await accountRepo.save(account);
+    });
+
+    await this.sessionService.invalidateAccountSessions(accountId);
     return Response.success(
       {
         accountId: account.id,

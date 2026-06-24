@@ -10,6 +10,7 @@ import { LocationModule } from '../location/location.module';
 import { OtpCode } from '../user/entities/otp-code.entity';
 import { MailService } from 'src/common/mail/mail.service';
 import { JwtModule } from '@nestjs/jwt';
+import { SessionModule } from '../session/session.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { JwtModule } from '@nestjs/jwt';
       Account,
       OtpCode,
     ]),
+    SessionModule,
     LocationModule,
     JwtModule.register({}),
   ],

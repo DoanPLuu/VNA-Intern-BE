@@ -12,6 +12,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { RoleModule } from './modules/role/role.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { UserModule } from './modules/user/user.module';
+import { SessionModule } from './modules/session/session.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { UserModule } from './modules/user/user.module';
     ReportsModule,
     CategoryModule,
     ReportPeriodModule,
+    SessionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

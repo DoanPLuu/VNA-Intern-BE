@@ -18,6 +18,7 @@ import { UpdateCompany } from './dto/update-company.dto';
 import { InitializeCompanyPassword } from './dto/initialize-company-password.dto';
 import { DateUtil } from 'src/common/utils/date.util';
 import { Workbook } from 'exceljs';
+import { SessionService } from '../session/session.service';
 
 interface JwtPayload {
   sub: number;
@@ -78,6 +79,7 @@ export class CompanyService {
     private readonly mailService: MailService,
     private readonly config: ConfigService,
     private readonly locationService: LocationService,
+    private readonly sessionService: SessionService,
   ) {}
 
   // ── Lookup ───────────────────────────────────────────────────
@@ -182,6 +184,7 @@ export class CompanyService {
       );
     account.password = await bcrypt.hash(dto.password, 10);
     await this.accountRepo.save(account);
+    await this.sessionService.invalidateAccountSessions(account.id);
     return ApiResponse.success(null, 'Khởi tạo mật khẩu thành công');
   }
 
@@ -203,6 +206,7 @@ export class CompanyService {
     company.account.isActive = false;
     await this.companyRepo.save(company);
     await this.accountRepo.save(company.account);
+    await this.sessionService.invalidateAccountSessions(company.account.id);
     return ApiResponse.success(
       null,
       `Khóa tài khoản có mã số thuế ${tax_code} thành công`,
@@ -252,6 +256,7 @@ export class CompanyService {
       throw ApiResponse.errorBad(`Doanh nghiệp ${tax_code} đã bị xóa`);
     account.isDeleted = true;
     await this.accountRepo.save(account);
+    await this.sessionService.invalidateAccountSessions(account.id);
     company.status = CompanyStatus.DELETED;
     await this.companyRepo.save(company);
     return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');

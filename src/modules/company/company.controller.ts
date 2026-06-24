@@ -37,6 +37,7 @@ interface JwtPayload {
   sub: number;
   username: string;
   accountType: AccountType;
+  tokenService: number;
 }
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
