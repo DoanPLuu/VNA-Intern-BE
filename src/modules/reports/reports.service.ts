@@ -62,6 +62,18 @@ interface SectionTwoRaw {
   totalCosts: string;
   propertyDamage: string;
 }
+
+interface CommonStatisticFields {
+  total_victims: number;
+  total_female_victims: number;
+  total_fatalities: number;
+  total_seriously_injured: number;
+  unmanaged_victims: number;
+  unmanaged_female_victims: number;
+  unmanaged_fatalities: number;
+  unmanaged_seriously_injured: number;
+}
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -105,17 +117,17 @@ export class ReportsService {
     dto.subsidized_details.forEach((d, i) =>
       this.validateStatisticDto(d, `Chi tiết vụ TNĐHTC số ${i + 1}`),
     );
-    // Validate số lượng detail khớp với total_accidents
-    if (dto.general_details.length !== dto.general_statistic.total_accidents)
-      throw Response.errorBad(
-        `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
-      );
-    if (
-      dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
-    )
-      throw Response.errorBad(
-        `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
-      );
+    // // Validate số lượng detail khớp với total_accidents
+    // if (dto.general_details.length !== dto.general_statistic.total_accidents)
+    //   throw Response.errorBad(
+    //     `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
+    //   );
+    // if (
+    //   dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
+    // )
+    //   throw Response.errorBad(
+    //     `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
+    //   );
     // Dùng transaction để đảm bảo toàn vẹn dữ liệu
     return this.dataSource.transaction(async (manager) => {
       // 1. Tạo Report
@@ -286,18 +298,18 @@ export class ReportsService {
       this.validateStatisticDto(d, `Chi tiết vụ TNĐHTC số ${i + 1}`),
     );
 
-    if (dto.general_details.length !== dto.general_statistic.total_accidents) {
-      throw Response.errorBad(
-        `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
-      );
-    }
-    if (
-      dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
-    ) {
-      throw Response.errorBad(
-        `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
-      );
-    }
+    // if (dto.general_details.length !== dto.general_statistic.total_accidents) {
+    //   throw Response.errorBad(
+    //     `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
+    //   );
+    // }
+    // if (
+    //   dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
+    // ) {
+    //   throw Response.errorBad(
+    //     `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
+    //   );
+    // }
 
     return this.dataSource.transaction(async (manager) => {
       // Cập nhật thông tin doanh nghiệp snapshot
@@ -367,7 +379,7 @@ export class ReportsService {
       );
     return company;
   }
-  private validateStatisticDto(dto: AccidentStatisticDto, label: string) {
+  private validateStatisticDto(dto: CommonStatisticFields, label: string) {
     if (dto.total_female_victims > dto.total_victims)
       throw Response.errorBad(
         `[${label}] Số lao động nữ bị tai nạn không được lơn hơn tổng số người bị nạn`,
@@ -392,14 +404,14 @@ export class ReportsService {
       throw Response.errorBad(
         `[${label}] Số người bị thương nặng không quản lý không được lớn hơn tổng số người bị thương nặng`,
       );
-    if (dto.total_fatal_accidents > dto.total_accidents)
-      throw Response.errorBad(
-        `[${label}] Số vụ có người chết không được lớn hơn tổng số vụ`,
-      );
-    if (dto.total_accidents_with_two_or_more_victims > dto.total_accidents)
-      throw Response.errorBad(
-        `[${label}] Số vụ có 2 người bị nạn trở lên không được lớn hơn tổng số vụ`,
-      );
+    // if (dto.total_fatal_accidents > dto.total_accidents)
+    //   throw Response.errorBad(
+    //     `[${label}] Số vụ có người chết không được lớn hơn tổng số vụ`,
+    //   );
+    // if (dto.total_accidents_with_two_or_more_victims > dto.total_accidents)
+    //   throw Response.errorBad(
+    //     `[${label}] Số vụ có 2 người bị nạn trở lên không được lớn hơn tổng số vụ`,
+    //   );
   }
 
   // Map DTO -> ReportStatistic entity
@@ -445,10 +457,6 @@ export class ReportsService {
       accidentCauseId: dto.accident_cause_id,
       injuryFactorId: dto.injury_factor_id,
       professionId: dto.profession_id,
-      totalIncidents: dto.total_accidents,
-      incidentsWithFatalities: dto.total_fatal_accidents,
-      incidentsWithMultipleVictims:
-        dto.total_accidents_with_two_or_more_victims,
       totalVictims: dto.total_victims,
       totalFemaleVictims: dto.total_female_victims,
       totalFatalities: dto.total_fatalities,

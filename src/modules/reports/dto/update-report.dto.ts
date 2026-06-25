@@ -34,9 +34,6 @@ export class UpdateReportDto extends OmitType(CreateReportDto, [
     "accident_cause_id": 1,
     "injury_factor_id": 5,
     "profession_id": 12,
-    "total_accidents": 1,
-    "total_fatal_accidents": 1,
-    "total_accidents_with_two_or_more_victims": 1,
     "total_victims": 6,
     "total_female_victims": 3,
     "total_fatalities": 2,
@@ -55,9 +52,6 @@ export class UpdateReportDto extends OmitType(CreateReportDto, [
     "accident_cause_id": 3,
     "injury_factor_id": 14,
     "profession_id": 24,
-    "total_accidents": 1,
-    "total_fatal_accidents": 0,
-    "total_accidents_with_two_or_more_victims": 0,
     "total_victims": 4,
     "total_female_victims": 2,
     "total_fatalities": 1,
@@ -96,9 +90,6 @@ export class UpdateReportDto extends OmitType(CreateReportDto, [
     "accident_cause_id": 1,
     "injury_factor_id": 5,
     "profession_id": 12,
-    "total_accidents": 1,
-    "total_fatal_accidents": 1,
-    "total_accidents_with_two_or_more_victims": 1,
     "total_victims": 6,
     "total_female_victims": 3,
     "total_fatalities": 2,
@@ -117,9 +108,6 @@ export class UpdateReportDto extends OmitType(CreateReportDto, [
     "accident_cause_id": 2,
     "injury_factor_id": 14,
     "profession_id": 12,
-    "total_accidents": 1,
-    "total_fatal_accidents": 0,
-    "total_accidents_with_two_or_more_victims": 0,
     "total_victims": 4,
     "total_female_victims": 2,
     "total_fatalities": 1,
@@ -129,10 +117,10 @@ export class UpdateReportDto extends OmitType(CreateReportDto, [
     "unmanaged_fatalities": 0,
     "unmanaged_seriously_injured": 0,
     "medical_expenses": 5000000,
-    "salary_paid_during_treatment": 5000000,
-    "compensation_expenses": 5000000,
+    "salary_paid_during_treatment": 6000000,
+    "compensation_expenses": 5500000,
     "total_leave_days": 10,
-    "property_damage_expenses": 5000000
+    "property_damage_expenses": 6000000
   }
 ]
 }
