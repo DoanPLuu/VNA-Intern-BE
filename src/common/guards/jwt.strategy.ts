@@ -36,7 +36,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: {
         id: payload.sub,
       },
-      select: { id: true, isActive: true, isDeleted: true, tokenVersion: true },
+      select: {
+        id: true,
+        isActive: true,
+        isDeleted: true,
+        tokenVersion: true,
+        accountType: true,
+      },
     });
 
     if (!account) {
@@ -54,11 +60,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     return {
-      id: account.id,
+      sub: payload.sub,
       email: account.email,
       role: account.role,
-      accountType: account.accountType,
+      accountType: payload.accountType,
       permissions: payload.permissions ?? [],
+      tokenVersion: payload.tokenVersion,
     };
   }
 }
