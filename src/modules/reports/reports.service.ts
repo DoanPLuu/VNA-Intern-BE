@@ -366,6 +366,32 @@ export class ReportsService {
       return report;
     });
   }
+  // Preview lại báo cáo trước khi submitted
+  async previewReport(accountId: number, reportId: number): Promise<Report> {
+    const company = await this.getCompanyByAccountId(accountId);
+
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, companyId: company.id },
+      relations: {
+        reportPeriod: true,
+        statistics: {
+          accidentDetails: {
+            accidentCause: true,
+            injuryFactor: true,
+            profession: true,
+          },
+        },
+      },
+    });
+
+    if (!report) throw Response.errorNotFound('Không tìm thấy báo cáo');
+    if (report.status !== ReportStatus.DRAFT)
+      throw Response.errorBad(
+        'Chỉ có thể xem trước báo cáo đang ở trạng thái nháp',
+      );
+
+    return report;
+  }
 
   //-------Private Helper------------
   private async getCompanyByAccountId(accountId: number): Promise<Company> {

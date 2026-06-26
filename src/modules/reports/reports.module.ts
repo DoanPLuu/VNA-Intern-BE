@@ -9,6 +9,8 @@ import { Report } from './entities/report.entity';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { SoReportsController } from './so-reports.controller';
+import { ReportPdfService } from './reportsPdf.service';
+import { CategoryModule } from '../category/category.module';
 
 @Module({
   imports: [
@@ -19,9 +21,10 @@ import { SoReportsController } from './so-reports.controller';
       Report,
       Company,
     ]),
+    CategoryModule,
     JwtModule.register({}),
   ],
   controllers: [ReportsController, SoReportsController],
-  providers: [ReportsService],
+  providers: [ReportsService, ReportPdfService],
 })
 export class ReportsModule {}
