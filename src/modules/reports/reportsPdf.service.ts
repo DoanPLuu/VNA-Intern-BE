@@ -84,7 +84,7 @@ export class ReportPdfService {
       this.toNum(general?.propertyDamage) +
       this.toNum(subsidized?.propertyDamage);
 
-    // Tổng số cột = 2 (label + maso) + 13 data = 15 cột
+    // Tổng số cột = 2 (label + maso) + 11 data = 13 cột
     const COLS = 13;
 
     return `<!DOCTYPE html>
@@ -103,7 +103,7 @@ export class ReportPdfService {
   .report-title { text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; margin: 4px 0 2px; }
   .report-sub { text-align: center; font-size: 8pt; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 7pt; table-layout: fixed; }
+  table { width: 99.8%; border-collapse: collapse; font-size: 7pt; table-layout: fixed; }
   th, td {
     border: 1px solid #000;
     padding: 2px 3px;
