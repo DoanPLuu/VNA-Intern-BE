@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { GuardsModule } from './common/guards/guards.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CompanyModule } from './modules/company/company.module';
@@ -10,10 +11,9 @@ import { LocationModule } from './modules/location/location.module';
 import { ReportPeriodModule } from './modules/report_periods/report_period.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RoleModule } from './modules/role/role.module';
+import { SessionModule } from './modules/session/session.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { UserModule } from './modules/user/user.module';
-import { SessionModule } from './modules/session/session.module';
-
 @Module({
   imports: [
     UserModule,
@@ -41,6 +41,7 @@ import { SessionModule } from './modules/session/session.module';
     CategoryModule,
     ReportPeriodModule,
     SessionModule,
+    GuardsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

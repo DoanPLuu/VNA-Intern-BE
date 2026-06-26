@@ -9,8 +9,10 @@ import { Repository } from 'typeorm';
 
 export interface JwtPayload {
   sub: number;
-  email: string;
-  role: string;
+  username: string;
+  accountType: string;
+  roleCode?: string;
+  permissions?: string[];
   tokenVersion: number;
 }
 
@@ -34,6 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: {
         id: payload.sub,
       },
+      select: { id: true, isActive: true, isDeleted: true, tokenVersion: true },
     });
 
     if (!account) {
@@ -55,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       email: account.email,
       role: account.role,
       accountType: account.accountType,
+      permissions: payload.permissions ?? [],
     };
   }
 }
