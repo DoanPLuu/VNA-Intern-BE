@@ -576,7 +576,12 @@ export class ReportsService {
     const report = await this.reportRepo.findOne({
       where: { id: reportId },
       relations: {
-        company: true,
+        company: {
+          businessType: true,
+          businessIndustry: true,
+          wardDkkd: true,
+          provinceDkkd: true,
+        },
         reportPeriod: true,
         statistics: {
           accidentDetails: {
