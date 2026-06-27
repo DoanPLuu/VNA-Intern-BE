@@ -7,9 +7,11 @@ import {
   Patch,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Response as ExpressResponse } from 'express';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
@@ -18,7 +20,7 @@ import { ApproveRejectDto } from './dto/approve-reject.dto';
 import { QueryReportDto } from './dto/QueryReportDto';
 import { SummaryQueryDto } from './dto/summary-report.dto';
 import { ReportsService } from './reports.service';
-
+import { ReportDocxService } from './reportsDocx.service';
 interface JwtPayload {
   sub: number;
   username: string;
@@ -33,8 +35,30 @@ interface AuthenticatedRequest extends Request {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('so/reports')
 export class SoReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(
+    private readonly reportsService: ReportsService,
+    private readonly reportDocxService: ReportDocxService,
+  ) {}
+  @Get('summary/export')
+  @RequirePermissions('VIEW_REPORT')
+  @ApiOperation({ summary: '[Sở] Xuất báo cáo tổng hợp ra file Word' })
+  async exportSummaryReport(
+    @Query() query: SummaryQueryDto,
+    @Res() res: ExpressResponse,
+  ) {
+    const buffer = await this.reportDocxService.exportSummaryDocx(query);
 
+    const fileName = `bao-cao-tong-hop-ky-${query.reportPeriodId}.docx`;
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.end(buffer);
+  }
   // GET /so/reports
   @Get()
   @RequirePermissions('VIEW_REPORT')

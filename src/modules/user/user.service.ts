@@ -1387,8 +1387,6 @@ export class UserService {
         { id: accountId },
         { password: newPasswordHash },
       );
-
-      await accountRepo.save(account);
     });
 
     await this.sessionService.invalidateAccountSessions(accountId);

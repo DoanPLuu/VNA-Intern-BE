@@ -822,6 +822,11 @@ export class ReportsService {
       joinTable: string,
       joinAlias: string,
     ) => {
+      const columnMap: Record<string, string> = {
+        professionId: 'profession_id',
+        accidentCauseId: 'accident_cause_id',
+        injuryFactorId: 'injury_factor_id',
+      };
       const raw = await this.reportAccidentDetailRepo
         .createQueryBuilder('d')
         .innerJoin('d.reportStatistic', 'rs')
@@ -831,6 +836,7 @@ export class ReportsService {
         .andWhere('r.status IN (:...statuses)', {
           statuses: ['SUBMITTED', 'APPROVED'],
         })
+        .andWhere(`d."${columnMap[groupField]}" IS NOT NULL`)
         .select([
           'cat.id                                       AS "categoryId"',
           'cat.code                                     AS "categoryCode"',
