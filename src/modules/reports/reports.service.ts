@@ -546,7 +546,12 @@ export class ReportsService {
     const [data, total] = await this.reportRepo.findAndCount({
       where,
       relations: {
-        company: true,
+        company: {
+          businessType: true,
+          businessIndustry: true,
+          wardDkkd: true,
+          provinceDkkd: true,
+        },
         reportPeriod: true,
       },
       order: { createdAt: 'DESC' },
