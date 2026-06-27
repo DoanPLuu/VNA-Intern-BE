@@ -249,6 +249,12 @@ export class ReportsService {
             profession: true,
           },
         },
+        company: {
+          businessType: true,
+          businessIndustry: true,
+          wardDkkd: true,
+          provinceDkkd: true,
+        },
       },
     });
     if (!report) {

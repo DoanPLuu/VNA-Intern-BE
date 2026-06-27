@@ -84,7 +84,7 @@ export class ReportPdfService {
       this.toNum(general?.propertyDamage) +
       this.toNum(subsidized?.propertyDamage);
 
-    // Tổng số cột = 2 (label + maso) + 11 data = 13 cột
+    // Tổng số cột = 2 (label + maso) + 13 data = 15 cột
     const COLS = 13;
 
     return `<!DOCTYPE html>
@@ -103,7 +103,7 @@ export class ReportPdfService {
   .report-title { text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; margin: 4px 0 2px; }
   .report-sub { text-align: center; font-size: 8pt; }
 
-  table { width: 99.8%; border-collapse: collapse; font-size: 7pt; table-layout: fixed; }
+  table { width: 100%; border-collapse: collapse; font-size: 7pt; table-layout: fixed; }
   th, td {
     border: 1px solid #000;
     padding: 2px 3px;
@@ -140,17 +140,18 @@ export class ReportPdfService {
 
 <div class="info-block">
   <div>Đơn vị báo cáo: ${report.company?.companyName ?? ''}</div>
-  <div>Địa chỉ: ${report.company?.addressDkkd ?? ''}    Mã huyện, quận: ${report.company?.wardDkkd?.name ?? ''}</div>
+  <div>Địa chỉ: ${[report.company?.addressDkkd, report.company?.provinceDkkd?.name, report.company?.wardDkkd?.name].filter(Boolean).join(', ')}&nbsp;&nbsp;&nbsp;&nbsp;Mã huyện, quận: ${report.company?.wardDkkd?.code ?? ''}</div>
   <div class="report-title">BÁO CÁO TỔNG HỢP TÌNH HÌNH TAI NẠN LAO ĐỘNG</div>
   <div class="report-sub">Kỳ báo cáo (${periodLabel}) năm ${period?.year ?? ''}</div>
   <div class="report-sub">Ngày báo cáo: ${reportDate}</div>
-  <div style="margin-top:4px">Thuộc loại hình cơ sở (doanh nghiệp): ${report.company?.businessType?.name ?? ''}    Mã loại hình: ${report.company?.businessType?.code ?? ''}</div>
+  <div style="margin-top:4px">Thuộc loại hình cơ sở (doanh nghiệp): ${report.company?.businessType?.name ?? ''}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mã loại hình: ${report.company?.businessType?.code ?? ''}</div>
   <div>Đơn vị nhận báo cáo: Sở Lao động - Thương binh và Xã hội.</div>
+  <div>Lĩnh vực sản xuất chính của cơ sở: ${report.company?.businessIndustry?.name ?? ''}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mã lĩnh vực: ${report.company?.businessIndustry?.code ?? ''}</div>
   <div>Tổng số lao động của cơ sở: <b>${report.totalEmployees ?? 0}</b> người, trong đó nữ: <b>${report.totalFemaleEmployees ?? 0}</b> người</div>
   <div>Tổng quỹ lương: <b>${this.num(this.toNum(report.totalSalaryFund))}</b> triệu đồng</div>
 </div>
 
-<!-- PHẦN I: 13 cột = label(32.5%) + maso(4%) + 11 cột data -->
+<!-- PHẦN I: 13 cột = label(24%) + maso(4%) + 11 cột data -->
 <table>
   <colgroup>
     <col style="width:32.5%"/>
@@ -238,7 +239,7 @@ export class ReportPdfService {
     </tr>
     <tr>
       <th rowspan="3">Tổng số ngày nghỉ vì tai nạn lao động<br>(kể cả ngày nghỉ chế độ)</th>
-      <th colspan="4">Tổng số ngày nghỉ vì TNLĐ (1.000 đ)</th>
+      <th colspan="4">Chi phí tính bằng tiền (1.000 đ)</th>
       <th rowspan="3">Thiệt hại tài sản (1.000 đ)</th>
     </tr>
     <tr>
@@ -263,6 +264,28 @@ export class ReportPdfService {
     </tr>
   </tbody>
 </table>
+
+
+<!-- Ký tên -->
+<div class="mt" style="width:100%; overflow:hidden;">
+  <div style="width:100%; text-align:center; font-weight:bold; font-size:9pt; padding: 8px 0 4px;">
+    ĐẠI DIỆN NGƯỜI SỬ DỤNG LAO ĐỘNG<br>
+    <span style="font-weight:normal; font-style:italic; font-size:8pt;">(Ký, ghi rõ họ tên, chức vụ, đóng dấu)</span>
+  </div>
+  <div style="clear:both; height:60px;"></div>
+</div>
+
+<hr style="border:none; border-top:1px solid #000; margin:4px 0;"/>
+
+<!-- Footnotes -->
+<div style="font-size:7pt; line-height:1.6; margin-top:4px;">
+  <div><sup>1</sup> Ghi mã số theo Danh Mục đơn vị hành chính do Thủ tướng Chính phủ ban hành theo quy định của Luật Thống kê.</div>
+  <div><sup>2</sup> Ghi tên, mã số theo danh Mục và mã số các đơn vị kinh tế, hành chính sự nghiệp theo quy định pháp luật hiện hành trong báo cáo thống kê.</div>
+  <div><sup>3</sup> Ghi tên ngành, mã ngành theo Hệ thống ngành kinh tế do Thủ tướng Chính phủ ban hành theo quy định của Luật Thống kê.</div>
+  <div><sup>4</sup> Ghi 01 nguyên nhân chính gây tai nạn lao động.</div>
+  <div><sup>5</sup> Ghi tên và mã số theo danh Mục yếu tố gây chấn thương.</div>
+  <div><sup>6</sup> Ghi tên và mã số nghề nghiệp theo danh Mục nghề nghiệp do Thủ tướng Chính phủ ban hành theo quy định của Luật Thống kê.</div>
+</div>
 
 </body>
 </html>`;
