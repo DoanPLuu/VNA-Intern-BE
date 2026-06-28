@@ -17,9 +17,9 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
-import { join } from 'path';
-import { Response as ApiResponse } from 'src/common';
-import { existsSync } from 'fs';
+// import { join } from 'path';
+// import { Response as ApiResponse } from 'src/common';
+// import { existsSync } from 'fs';
 import type { Response as ExpressResponse } from 'express';
 import { ReportPdfService } from './reportsPdf.service';
 interface JwtPayload {
@@ -55,22 +55,22 @@ export class ReportsController {
     return this.reportsService.getMyReports(req.user.sub);
   }
 
-  @Get('template')
-  downloadTemplate(@Res() res: ExpressResponse) {
-    const filePath = join(
-      process.cwd(),
-      'src',
-      'public',
-      'templates',
-      'Phu-Luc-XII-Mau-Bao-Cao-TNLD.doc',
-    );
-    if (!existsSync(filePath)) {
-      throw ApiResponse.errorNotFound('File mẫu không tồn tại');
-    }
-    console.log(filePath);
-    console.log(existsSync(filePath));
-    res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
-  }
+  // @Get('template')
+  // downloadTemplate(@Res() res: ExpressResponse) {
+  //   const filePath = join(
+  //     process.cwd(),
+  //     'src',
+  //     'public',
+  //     'templates',
+  //     'Phu-Luc-XII-Mau-Bao-Cao-TNLD.doc',
+  //   );
+  //   if (!existsSync(filePath)) {
+  //     throw ApiResponse.errorNotFound('File mẫu không tồn tại');
+  //   }
+  //   console.log(filePath);
+  //   console.log(existsSync(filePath));
+  //   res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
+  // }
 
   // GET /reports/:id
   @Get(':id')
@@ -97,7 +97,10 @@ export class ReportsController {
     @Param('id', ParseIntPipe) id: number,
     @Res() res: ExpressResponse,
   ) {
-    const report = await this.reportsService.fetchReportEntityById(req.user.sub, id);
+    const report = await this.reportsService.fetchReportEntityById(
+      req.user.sub,
+      id,
+    );
     const pdfBuffer = await this.reportPdfService.generatePdf(report);
     res.set({
       'Content-Type': 'application/pdf',
