@@ -467,8 +467,8 @@ export class ReportPdfService {
       s.totalDaysOff! += d.totalDaysOff ?? 0;
     }
 
-    return Array.from(map.values()).sort((a, b) =>
-      a.code.localeCompare(b.code),
+    return Array.from(map.values()).sort(
+      (a, b) => Number(a.code) - Number(b.code),
     );
   }
 }
