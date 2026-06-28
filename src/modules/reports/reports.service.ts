@@ -335,6 +335,9 @@ export class ReportsService {
     dto.subsidized_details.forEach((d, i) =>
       this.validateStatisticDto(d, `Chi tiết vụ TNĐHTC số ${i + 1}`),
     );
+    if (report.status === ReportStatus.REJECTED) {
+      report.status = ReportStatus.DRAFT;
+    }
 
     // if (dto.general_details.length !== dto.general_statistic.total_accidents) {
     //   throw Response.errorBad(
