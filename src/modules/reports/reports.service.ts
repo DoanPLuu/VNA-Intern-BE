@@ -235,7 +235,39 @@ export class ReportsService {
   }
 
   // 3. XEM LẠI BÁO CÁO (doanh nghiệp xem báo cáo của mình)
-  async getReportById(accountId: number, reportId: number): Promise<Report> {
+  async getReportById(accountId: number, reportId: number) {
+    const company = await this.getCompanyByAccountId(accountId);
+
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, companyId: company.id },
+      relations: {
+        reportPeriod: true,
+        statistics: {
+          accidentDetails: {
+            accidentCause: true,
+            injuryFactor: true,
+            profession: true,
+          },
+        },
+        company: {
+          businessType: true,
+          businessIndustry: true,
+          wardDkkd: true,
+          provinceDkkd: true,
+        },
+      },
+    });
+    if (!report) {
+      throw Response.errorNotFound('Không tìm thấy báo cáo');
+    }
+    return Response.success(report, 'Lấy chi tiết báo cáo thành công');
+  }
+
+  // Private helper dùng nội bộ (e.g. export PDF) — trả thẳng entity
+  async fetchReportEntityById(
+    accountId: number,
+    reportId: number,
+  ): Promise<Report> {
     const company = await this.getCompanyByAccountId(accountId);
 
     const report = await this.reportRepo.findOne({
@@ -567,11 +599,11 @@ export class ReportsService {
       'Lấy danh sách báo cáo thành công',
     );
   }
-  async getReportByIdForSo(reportId: number): Promise<Report> {
+  async getReportByIdForSo(reportId: number) {
     const report = await this.reportRepo.findOne({
       where: { id: reportId },
       relations: {
-        company: true,
+        // company: true,
         reportPeriod: true,
         statistics: {
           accidentDetails: {
@@ -580,13 +612,19 @@ export class ReportsService {
             profession: true,
           },
         },
+        company: {
+          businessType: true,
+          businessIndustry: true,
+          wardDkkd: true,
+          provinceDkkd: true,
+        },
         approver: true,
       },
     });
     if (!report) {
       throw Response.errorNotFound('Không tìm thấy báo cáo');
     }
-    return report;
+    return Response.success(report, 'Lấy chi tiết báo cáo thành công');
   }
 
   // Sở duyệt nhiều báo cáo
@@ -843,6 +881,7 @@ export class ReportsService {
           statuses: ['SUBMITTED', 'APPROVED'],
         })
         .andWhere(`d."${columnMap[groupField]}" IS NOT NULL`)
+        .andWhere('cat.status = true')
         .select([
           'cat.id                                       AS "categoryId"',
           'cat.code                                     AS "categoryCode"',

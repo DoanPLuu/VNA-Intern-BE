@@ -114,9 +114,11 @@ export class ReportDocxService {
       year: period?.year ?? new Date().getFullYear(),
       reportDate: new Date().toLocaleDateString('vi-VN'),
 
-      // Dòng tổng
+      // ── Phần I: Dòng tổng (prefix t_) ──────────────────────────────────────
       t_totalCompanies: total.totalCompanies,
+      t_companiesJoined: total.totalCompanies,
       t_totalEmployees: total.totalEmployees,
+      t_employeesJoined: total.totalEmployees,
       t_femaleEmployees: total.femaleEmployees,
       t_totalIncidents: total.totalIncidents,
       t_incidentsWithFatalities: total.incidentsWithFatalities,
@@ -134,12 +136,15 @@ export class ReportDocxService {
       t_ktnld: total.ktnld,
       t_kChet: total.kChet,
 
-      // Phần I - Bảng theo loại hình DN
+      // ── Phần I: Bảng lặp theo loại hình DN ─────────────────────────────────
       sectionOneRows: rows.map((row, i) => ({
         stt: i + 1,
         businessTypeName: row.businessTypeName,
+        businessTypeCode: row.businessTypeCode,
         totalCompanies: row.totalCompanies,
+        companiesJoined: row.totalCompanies,
         totalEmployees: row.totalEmployees,
+        employeesJoined: row.totalEmployees,
         femaleEmployees: row.femaleEmployees,
         totalIncidents: row.totalIncidents,
         incidentsWithFatalities: row.incidentsWithFatalities,
@@ -158,7 +163,7 @@ export class ReportDocxService {
         kChet: row.kChet,
       })),
 
-      // Phần II
+      // ── Phần II: 3 nhóm lặp ─────────────────────────────────────────────────
       byProfession: mapSectionTwo(data.sectionTwo.byProfession),
       byAccidentCause: mapSectionTwo(data.sectionTwo.byAccidentCause),
       byInjuryFactor: mapSectionTwo(data.sectionTwo.byInjuryFactor),
