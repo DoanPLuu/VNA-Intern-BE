@@ -320,9 +320,9 @@ export class ReportsService {
     if (!report) {
       throw Response.errorNotFound('Không tìm thấy báo cáo');
     }
-    if (report.status !== ReportStatus.DRAFT) {
+    if (![ReportStatus.DRAFT, ReportStatus.REJECTED].includes(report.status)) {
       throw Response.errorBad(
-        'Chỉ có thể chỉnh sửa báo cáo đang ở trạng thái nháp',
+        'Chỉ có thể chỉnh sửa báo cáo đang ở trạng thái nháp hoặc bị từ chối',
       );
     }
 

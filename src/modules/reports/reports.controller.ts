@@ -112,7 +112,7 @@ export class ReportsController {
 
   // PATCH /reports/:id
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật báo cáo (chỉ khi còn DRAFT)' })
+  @ApiOperation({ summary: 'Cập nhật báo cáo (chỉ khi DRAFT hoặc REJECTED)' })
   update(
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
