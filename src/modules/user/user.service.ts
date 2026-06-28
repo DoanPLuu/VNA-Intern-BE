@@ -10,6 +10,7 @@ import { Response } from '../../common/response';
 import { Account, AccountType } from '../auth/entities/account.entity';
 import { LocationService } from '../location/location.service';
 import { Role } from '../role/entities/role.entity';
+import { SessionService } from '../session/session.service';
 import { CreateUserDto } from './dto/CreateUser.dto';
 import { DeleteUsersDto } from './dto/DeleteUser.dto';
 import { ListUserDto } from './dto/listUser.dto';
@@ -18,7 +19,6 @@ import { ToggleUserActiveDto } from './dto/ToggleUserActive.dto';
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { UserProfileDto } from './dto/userProfile.dto';
 import { User } from './entities/user.entity';
-import { SessionService } from '../session/session.service';
 
 type ImportUserRow = {
   rowNumber: number;
@@ -1062,6 +1062,11 @@ export class UserService {
         'Các người dùng này đã được xóa trước đó',
       );
     }
+    await Promise.all(
+      deleteIds.map((accountId) =>
+        this.sessionService.invalidateAccountSessions(accountId),
+      ),
+    );
     await this.accountRepo.update(
       { id: In(deleteIds) },
       { isDeleted: true, isActive: false },
@@ -1382,8 +1387,6 @@ export class UserService {
         { id: accountId },
         { password: newPasswordHash },
       );
-
-      await accountRepo.save(account);
     });
 
     await this.sessionService.invalidateAccountSessions(accountId);
@@ -1421,7 +1424,9 @@ export class UserService {
 
     user.account.isActive = dto.isActive;
     await this.accountRepo.save(user.account);
-
+    if (!dto.isActive) {
+      await this.sessionService.invalidateAccountSessions(accountId);
+    }
     return Response.success(
       {
         accountId: user.accountId,

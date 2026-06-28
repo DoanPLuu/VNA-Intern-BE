@@ -81,7 +81,7 @@ export class ReportPeriodService {
     });
 
     if (!report) {
-      throw Response.errorDuplicated(
+      throw Response.errorNotFound(
         `Không tìm thấy cấu hình báo cáo với id ${reportId}`,
       );
     }

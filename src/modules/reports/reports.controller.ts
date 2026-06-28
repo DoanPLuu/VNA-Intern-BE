@@ -97,7 +97,7 @@ export class ReportsController {
     @Param('id', ParseIntPipe) id: number,
     @Res() res: ExpressResponse,
   ) {
-    const report = await this.reportsService.getReportById(req.user.sub, id);
+    const report = await this.reportsService.fetchReportEntityById(req.user.sub, id);
     const pdfBuffer = await this.reportPdfService.generatePdf(report);
     res.set({
       'Content-Type': 'application/pdf',

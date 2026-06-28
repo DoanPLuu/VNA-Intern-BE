@@ -9,15 +9,15 @@ import { Repository } from 'typeorm';
 import { CompanyService } from '../company/company.service';
 import { CreateCompany } from '../company/dto/company.dto';
 import { Role } from '../role/entities/role.entity';
+import { SessionService } from '../session/session.service';
 import { EmailChangeSession } from '../user/entities/email-change-session.entity';
 import { OtpCode, OtpType } from '../user/entities/otp-code.entity';
-import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { ChangePasswordDTO, LoginDTO, ResetPasswordDTO } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { Account, AccountType } from './entities/account.entity';
-import { SessionService } from '../session/session.service';
+import { RefreshToken } from './entities/refresh-token.entity';
 @Injectable()
 export class AuthService {
   constructor(
@@ -132,6 +132,7 @@ export class AuthService {
       accountType: account.accountType,
       roleCode,
       permissions,
+      tokenVersion: account.tokenVersion,
     };
 
     // ── Access Token ──────────────────────────────────────────

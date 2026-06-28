@@ -4,13 +4,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Account } from 'src/modules/auth/entities/account.entity';
+import { Repository } from 'typeorm';
 
 export interface JwtPayload {
   sub: number;
-  email: string;
-  role: string;
+  username: string;
+  accountType: string;
+  roleCode?: string;
+  permissions?: string[];
   tokenVersion: number;
 }
 
@@ -34,6 +36,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: {
         id: payload.sub,
       },
+      select: {
+        id: true,
+        isActive: true,
+        isDeleted: true,
+        tokenVersion: true,
+        accountType: true,
+      },
     });
 
     if (!account) {
@@ -51,10 +60,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     return {
-      id: account.id,
+      sub: payload.sub,
       email: account.email,
       role: account.role,
-      accountType: account.accountType,
+      accountType: payload.accountType,
+      permissions: payload.permissions ?? [],
+      tokenVersion: payload.tokenVersion,
     };
   }
 }
