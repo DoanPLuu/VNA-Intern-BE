@@ -304,6 +304,61 @@ export class ReportsService {
     return Response.success(report, 'Lấy chi tiết báo cáo thành công');
   }
 
+  async getReportStatus(accountId: number, reportId: number) {
+    const company = await this.getCompanyByAccountId(accountId);
+
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, companyId: company.id },
+    });
+    if (!report) {
+      throw Response.errorNotFound('Không tìm thấy báo cáo');
+    }
+
+    // Step 3
+    let step3: Record<string, unknown> = {
+      step: 3,
+      title: 'Chờ xét duyệt',
+      status: 'wait',
+    };
+    if (report.status === ReportStatus.APPROVED) {
+      step3 = {
+        step: 3,
+        title: 'Đã phê duyệt',
+        status: 'done',
+        time: report.approvedAt,
+      };
+    } else if (report.status === ReportStatus.REJECTED) {
+      step3 = {
+        step: 3,
+        title: 'Bị từ chối',
+        status: 'error',
+        time: report.approvedAt,
+        reason: report.note,
+      };
+    }
+
+    const timeline = [
+      {
+        step: 1,
+        title: 'Tạo bản nháp',
+        status: 'done',
+        time: report.createdAt,
+      },
+      {
+        step: 2,
+        title: 'Nộp báo cáo',
+        status: report.status === ReportStatus.DRAFT ? 'wait' : 'done',
+        time: report.status === ReportStatus.DRAFT ? null : report.submittedAt,
+      },
+      step3,
+    ];
+
+    return Response.success(
+      { reportId: report.id, currentStatus: report.status, timeline },
+      'Lấy tiến trình báo cáo thành công',
+    );
+  }
+
   // Private helper dùng nội bộ (e.g. export PDF) — trả thẳng entity
   async fetchReportEntityById(
     accountId: number,

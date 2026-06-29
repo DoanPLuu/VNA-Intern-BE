@@ -74,6 +74,16 @@ export class ReportsController {
   //   res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
   // }
 
+  // GET /reports/:id/status
+  @Get(':id/status')
+  @ApiOperation({ summary: 'Xem tiến trình báo cáo (stepper)' })
+  getStatus(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.reportsService.getReportStatus(req.user.sub, id);
+  }
+
   // GET /reports/:id
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết báo cáo' })
