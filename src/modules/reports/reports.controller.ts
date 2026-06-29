@@ -100,6 +100,7 @@ export class ReportsController {
     const report = await this.reportsService.fetchReportEntityById(
       req.user.sub,
       id,
+      req.user.accountType,
     );
     const pdfBuffer = await this.reportPdfService.generatePdf(report);
     res.set({

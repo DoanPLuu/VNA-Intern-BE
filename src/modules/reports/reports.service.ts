@@ -267,11 +267,17 @@ export class ReportsService {
   async fetchReportEntityById(
     accountId: number,
     reportId: number,
+    accountType?: string,
   ): Promise<Report> {
-    const company = await this.getCompanyByAccountId(accountId);
+    const whereCondition: any = { id: reportId };
+
+    if (accountType !== 'SO') {
+      const company = await this.getCompanyByAccountId(accountId);
+      whereCondition.companyId = company.id;
+    }
 
     const report = await this.reportRepo.findOne({
-      where: { id: reportId, companyId: company.id },
+      where: whereCondition,
       relations: {
         reportPeriod: true,
         statistics: {
