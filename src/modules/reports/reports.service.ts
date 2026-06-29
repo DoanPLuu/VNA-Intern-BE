@@ -251,8 +251,10 @@ export class ReportsService {
     if (!report) {
       throw Response.errorNotFound('Không tìm thấy báo cáo');
     }
-    if (report.status !== ReportStatus.DRAFT) {
-      throw Response.errorBad('Chỉ có thể nộp báo cáo đang ở trạng thái nháp');
+    if (![ReportStatus.DRAFT, ReportStatus.REJECTED].includes(report.status)) {
+      throw Response.errorBad(
+        'Chỉ có thể nộp báo cáo đang ở trạng thái nháp hoặc bị từ chối',
+      );
     }
 
     // Kiểm tra kỳ báo cáo chưa đóng
