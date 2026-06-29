@@ -159,6 +159,7 @@ export class ReportsService {
     //   throw Response.errorBad(
     //     `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
     //   );
+
     // Dùng transaction để đảm bảo toàn vẹn dữ liệu
     return this.dataSource.transaction(async (manager) => {
       // 1. Tạo Report
@@ -171,6 +172,11 @@ export class ReportsService {
         totalSalaryFund: dto.company_info.total_salary_fund,
       });
       const savedReport = await manager.save(report);
+      await manager.save(ReportHistory, {
+        reportId: savedReport.id,
+        action: 'DRAFT',
+        actorName: company.companyName,
+      });
 
       // 2. Tạo ReportStatistic cho TNLĐ chung
       const generalStatistic = this.mapToStatistic(
