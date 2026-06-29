@@ -84,6 +84,15 @@ export class ReportsController {
     return this.reportsService.getReportStatus(req.user.sub, id);
   }
 
+  @Get(':id/history')
+  @ApiOperation({ summary: 'Xem lịch sử thao tác báo cáo' })
+  getHistory(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.reportsService.getReportHistory(req.user.sub, id);
+  }
+
   // GET /reports/:id
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết báo cáo' })

@@ -359,6 +359,37 @@ export class ReportsService {
     );
   }
 
+  // Service
+  async getReportHistory(accountId: number, reportId: number) {
+    const company = await this.getCompanyByAccountId(accountId);
+
+    const report = await this.reportRepo.findOne({
+      where: { id: reportId, companyId: company.id },
+    });
+    if (!report) {
+      throw Response.errorNotFound('Không tìm thấy báo cáo');
+    }
+
+    const histories = await this.reportHistoryRepo.find({
+      where: { reportId },
+      order: { createdAt: 'ASC' },
+    });
+
+    return Response.success(
+      {
+        reportId: report.id,
+        currentStatus: report.status,
+        history: histories.map((h) => ({
+          action: h.action,
+          actorName: h.actorName,
+          note: h.note,
+          time: h.createdAt,
+        })),
+      },
+      'Lấy lịch sử báo cáo thành công',
+    );
+  }
+
   // Private helper dùng nội bộ (e.g. export PDF) — trả thẳng entity
   async fetchReportEntityById(
     accountId: number,
@@ -456,10 +487,18 @@ export class ReportsService {
 
     return this.dataSource.transaction(async (manager) => {
       // Cập nhật thông tin doanh nghiệp snapshot
-      report.totalEmployees = dto.company_info.total_employees;
-      report.totalFemaleEmployees = dto.company_info.total_female_employees;
-      report.totalSalaryFund = dto.company_info.total_salary_fund;
-      await manager.save(report);
+      await manager.update(Report, report.id, {
+        totalEmployees: dto.company_info.total_employees,
+        totalFemaleEmployees: dto.company_info.total_female_employees,
+        totalSalaryFund: dto.company_info.total_salary_fund,
+        ...(report.status === ReportStatus.REJECTED && {
+          status: ReportStatus.DRAFT,
+        }),
+      });
+      // report.totalEmployees = dto.company_info.total_employees;
+      // report.totalFemaleEmployees = dto.company_info.total_female_employees;
+      // report.totalSalaryFund = dto.company_info.total_salary_fund;
+      // await manager.save(report);
 
       // Xóa toàn bộ statistic + detail cũ rồi tạo lại
       // (đơn giản hơn update từng dòng vì số lượng detail có thể thay đổi)
@@ -506,7 +545,9 @@ export class ReportsService {
         ),
       );
 
-      return report;
+      return manager.findOne(Report, {
+        where: { id: report.id },
+      }) as Promise<Report>;
     });
   }
   // Preview lại báo cáo trước khi submitted
