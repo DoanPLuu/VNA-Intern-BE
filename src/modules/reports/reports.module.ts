@@ -5,6 +5,7 @@ import { ReportPeriod } from 'src/modules/report_periods/entities/report_periods
 import { CategoryModule } from '../category/category.module';
 import { Company } from '../company/entities/company.entity';
 import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
+import { ReportHistory } from './entities/report-history.entity';
 import { ReportStatistic } from './entities/report-statistic.entity';
 import { Report } from './entities/report.entity';
 import { ReportsController } from './reports.controller';
@@ -20,6 +21,7 @@ import { SoReportsController } from './so-reports.controller';
       ReportStatistic,
       Report,
       Company,
+      ReportHistory,
     ]),
     CategoryModule,
     JwtModule.register({}),

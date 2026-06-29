@@ -11,16 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Response as ExpressResponse } from 'express';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { Response as ApiResponse } from 'src/common';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { AccountType } from '../auth/entities/account.entity';
 import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
-import { UpdateAttachmentDto } from './dto/update-attachment.dto';
-import { join } from 'path';
-import { Response as ApiResponse } from 'src/common';
-import { existsSync } from 'fs';
-import type { Response as ExpressResponse } from 'express';
 import { ReportPdfService } from './reportsPdf.service';
 interface JwtPayload {
   sub: number;
@@ -97,7 +97,10 @@ export class ReportsController {
     @Param('id', ParseIntPipe) id: number,
     @Res() res: ExpressResponse,
   ) {
-    const report = await this.reportsService.fetchReportEntityById(req.user.sub, id);
+    const report = await this.reportsService.fetchReportEntityById(
+      req.user.sub,
+      id,
+    );
     const pdfBuffer = await this.reportPdfService.generatePdf(report);
     res.set({
       'Content-Type': 'application/pdf',

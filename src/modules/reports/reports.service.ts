@@ -7,6 +7,7 @@ import {
 } from 'src/modules/report_periods/entities/report_periods.entity';
 import { DataSource, FindOptionsWhere, ILike, In, Repository } from 'typeorm';
 import { Company } from '../company/entities/company.entity';
+import { User } from '../user/entities/user.entity';
 import { AccidentDetailDto } from './dto/accident-detail.dto';
 import { AccidentStatisticDto } from './dto/accident-statistic.dto';
 import { ApproveRejectDto } from './dto/approve-reject.dto';
@@ -16,6 +17,7 @@ import { SummaryQueryDto } from './dto/summary-report.dto';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportAccidentDetail } from './entities/report-accident-detail.entity';
+import { ReportHistory } from './entities/report-history.entity';
 import {
   ReportCategory,
   ReportStatistic,
@@ -93,6 +95,9 @@ export class ReportsService {
     private readonly companyRepo: Repository<Company>,
 
     private readonly dataSource: DataSource,
+
+    @InjectRepository(ReportHistory)
+    private readonly reportHistoryRepo: Repository<ReportHistory>,
   ) {}
   // 1. Tạo báo cáo mới (DRAFT)
   async createReport(accountId: number, dto: CreateReportDto): Promise<Report> {
@@ -231,7 +236,17 @@ export class ReportsService {
 
     report.status = ReportStatus.SUBMITTED;
     report.submittedAt = new Date();
-    return this.reportRepo.save(report);
+    // return this.reportRepo.save(report);
+    const savedReport = await this.reportRepo.save(report);
+
+    const history = this.reportHistoryRepo.create({
+      reportId: savedReport.id,
+      action: 'SUBMITTED',
+      actorName: company.companyName,
+    });
+    await this.reportHistoryRepo.save(history);
+
+    return savedReport;
   }
 
   // 3. XEM LẠI BÁO CÁO (doanh nghiệp xem báo cáo của mình)
@@ -666,7 +681,19 @@ export class ReportsService {
         note: null,
       },
     );
+    const approverUser = await this.dataSource
+      .getRepository(User)
+      .findOne({ where: { accountId: approverAccountId } });
+    const approverName = approverUser?.fullName || 'Cán bộ Sở';
+    const histories = dto.reportIds.map((id) =>
+      this.reportHistoryRepo.create({
+        reportId: id,
+        action: 'APPROVED',
+        actorName: approverName,
+      }),
+    );
 
+    await this.reportHistoryRepo.save(histories);
     return Response.success(
       { approvedIds: dto.reportIds },
       `Đã duyệt ${dto.reportIds.length} báo cáo thành công`,
@@ -708,11 +735,49 @@ export class ReportsService {
         note: dto.note.trim(),
       },
     );
-
+    const approverUser = await this.dataSource
+      .getRepository(User)
+      .findOne({ where: { accountId: approverAccountId } });
+    const rejectReason = dto.note ? dto.note.trim() : '';
+    const approverName = approverUser?.fullName || 'Cán bộ Sở';
+    const histories = dto.reportIds.map((id) =>
+      this.reportHistoryRepo.create({
+        reportId: id,
+        action: 'REJECTED',
+        actorName: approverName,
+        note: rejectReason,
+      }),
+    );
+    await this.reportHistoryRepo.save(histories);
     return Response.success(
       { rejectedIds: dto.reportIds },
       `Đã từ chối ${dto.reportIds.length} báo cáo`,
     );
+  }
+  async getReportTimeline(reportId: number) {
+    const histories = await this.reportHistoryRepo.find({
+      where: { reportId: reportId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const timeline = histories.map((history) => {
+      let title = '';
+      if (history.action === 'SUBMITTED')
+        title = `${history.actorName} đã gửi báo cáo`;
+      if (history.action === 'APPROVED')
+        title = `${history.actorName} đã duyệt báo cáo`;
+      if (history.action === 'REJECTED')
+        title = `${history.actorName} từ chối báo cáo`;
+
+      return {
+        time: history.createdAt,
+        title: title,
+        reason: history.note,
+        type: history.action,
+      };
+    });
+
+    return Response.success({ timeline }, 'Lấy tiến độ xử lý thành công');
   }
   async getSummaryReport(query: SummaryQueryDto) {
     const { reportPeriodId } = query;

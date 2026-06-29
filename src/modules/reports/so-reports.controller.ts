@@ -82,7 +82,14 @@ export class SoReportsController {
   getOneForSo(@Param('id', ParseIntPipe) id: number) {
     return this.reportsService.getReportByIdForSo(id);
   }
-
+  @Get(':id/status')
+  @RequirePermissions('VIEW_REPORT')
+  @ApiOperation({
+    summary: '[Sở] Xem trạng thái và lý do duyệt/từ chối của báo cáo',
+  })
+  getReportStatusForSo(@Param('id', ParseIntPipe) id: number) {
+    return this.reportsService.getReportTimeline(id);
+  }
   // PATCH /so/reports/approve
   @Patch('approve')
   @RequirePermissions('APPROVE_REPORT')
