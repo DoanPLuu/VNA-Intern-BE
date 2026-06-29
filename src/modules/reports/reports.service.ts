@@ -23,6 +23,8 @@ import {
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
+import { AccountType } from '../auth/entities/account.entity';
 
 interface SectionOneRaw {
   businessTypeId: string;
@@ -99,6 +101,30 @@ export class ReportsService {
     @InjectRepository(ReportHistory)
     private readonly reportHistoryRepo: Repository<ReportHistory>,
   ) {}
+
+  async getReportsByYear(year: number, payload: JwtPayload) {
+    const where: FindOptionsWhere<Report> = {
+      reportPeriod: { year },
+    };
+    if ((payload.accountType as AccountType) === AccountType.DOANH_NGHIEP) {
+      const company = await this.getCompanyByAccountId(payload.sub);
+      if (!company) {
+        throw Response.errorNotFound('Không tìm thấy công ty');
+      }
+      where.companyId = company.id;
+    }
+    const data = await this.reportRepo.find({
+      where,
+      relations: { reportPeriod: true, company: true },
+      order: { createdAt: 'DESC' },
+    });
+
+    // if (!data.length)
+    //   throw Response.errorNotFound(`Năm ${year} không có kỳ báo cáo nào`);
+
+    return Response.success(data, 'Lấy danh sách báo cáo theo năm thành công');
+  }
+
   // 1. Tạo báo cáo mới (DRAFT)
   async createReport(accountId: number, dto: CreateReportDto): Promise<Report> {
     const company = await this.getCompanyByAccountId(accountId);
@@ -282,11 +308,17 @@ export class ReportsService {
   async fetchReportEntityById(
     accountId: number,
     reportId: number,
+    accountType?: string,
   ): Promise<Report> {
-    const company = await this.getCompanyByAccountId(accountId);
+    const whereCondition: FindOptionsWhere<Report> = { id: reportId };
+
+    if (accountType !== 'SO') {
+      const company = await this.getCompanyByAccountId(accountId);
+      whereCondition.companyId = company.id;
+    }
 
     const report = await this.reportRepo.findOne({
-      where: { id: reportId, companyId: company.id },
+      where: whereCondition,
       relations: {
         reportPeriod: true,
         statistics: {
@@ -335,9 +367,9 @@ export class ReportsService {
     if (!report) {
       throw Response.errorNotFound('Không tìm thấy báo cáo');
     }
-    if (report.status !== ReportStatus.DRAFT) {
+    if (![ReportStatus.DRAFT, ReportStatus.REJECTED].includes(report.status)) {
       throw Response.errorBad(
-        'Chỉ có thể chỉnh sửa báo cáo đang ở trạng thái nháp',
+        'Chỉ có thể chỉnh sửa báo cáo đang ở trạng thái nháp hoặc bị từ chối',
       );
     }
 
@@ -350,6 +382,9 @@ export class ReportsService {
     dto.subsidized_details.forEach((d, i) =>
       this.validateStatisticDto(d, `Chi tiết vụ TNĐHTC số ${i + 1}`),
     );
+    if (report.status === ReportStatus.REJECTED) {
+      report.status = ReportStatus.DRAFT;
+    }
 
     // if (dto.general_details.length !== dto.general_statistic.total_accidents) {
     //   throw Response.errorBad(

@@ -12,21 +12,17 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response as ExpressResponse } from 'express';
-import { existsSync } from 'fs';
-import { join } from 'path';
-import { Response as ApiResponse } from 'src/common';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
-import { AccountType } from '../auth/entities/account.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
+
+// import { join } from 'path';
+// import { Response as ApiResponse } from 'src/common';
+// import { existsSync } from 'fs';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
 import { ReportPdfService } from './reportsPdf.service';
-interface JwtPayload {
-  sub: number;
-  username: string;
-  accountType: AccountType;
-}
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
 }
@@ -40,7 +36,6 @@ export class ReportsController {
     private readonly reportsService: ReportsService,
     private readonly reportPdfService: ReportPdfService,
   ) {}
-
   // POST /reports
   @Post()
   @ApiOperation({ summary: 'Tạo báo cáo TNLĐ mới (DRAFT)' })
@@ -48,6 +43,13 @@ export class ReportsController {
     return this.reportsService.createReport(req.user.sub, dto);
   }
 
+  @Get('by-year/:year')
+  async getByYear(
+    @Param('year', ParseIntPipe) year: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.reportsService.getReportsByYear(year, req.user);
+  }
   // GET /reports
   @Get()
   @ApiOperation({ summary: 'Danh sách báo cáo của doanh nghiệp' })
@@ -55,22 +57,22 @@ export class ReportsController {
     return this.reportsService.getMyReports(req.user.sub);
   }
 
-  @Get('template')
-  downloadTemplate(@Res() res: ExpressResponse) {
-    const filePath = join(
-      process.cwd(),
-      'src',
-      'public',
-      'templates',
-      'Phu-Luc-XII-Mau-Bao-Cao-TNLD.doc',
-    );
-    if (!existsSync(filePath)) {
-      throw ApiResponse.errorNotFound('File mẫu không tồn tại');
-    }
-    console.log(filePath);
-    console.log(existsSync(filePath));
-    res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
-  }
+  // @Get('template')
+  // downloadTemplate(@Res() res: ExpressResponse) {
+  //   const filePath = join(
+  //     process.cwd(),
+  //     'src',
+  //     'public',
+  //     'templates',
+  //     'Phu-Luc-XII-Mau-Bao-Cao-TNLD.doc',
+  //   );
+  //   if (!existsSync(filePath)) {
+  //     throw ApiResponse.errorNotFound('File mẫu không tồn tại');
+  //   }
+  //   console.log(filePath);
+  //   console.log(existsSync(filePath));
+  //   res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
+  // }
 
   // GET /reports/:id
   @Get(':id')
@@ -100,6 +102,8 @@ export class ReportsController {
     const report = await this.reportsService.fetchReportEntityById(
       req.user.sub,
       id,
+
+      req.user.accountType,
     );
     const pdfBuffer = await this.reportPdfService.generatePdf(report);
     res.set({
@@ -112,7 +116,7 @@ export class ReportsController {
 
   // PATCH /reports/:id
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật báo cáo (chỉ khi còn DRAFT)' })
+  @ApiOperation({ summary: 'Cập nhật báo cáo (chỉ khi DRAFT hoặc REJECTED)' })
   update(
     @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,

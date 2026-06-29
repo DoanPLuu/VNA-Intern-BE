@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Response } from 'src/common';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
 import { CreateReportPeriodDto } from './dto/CreateReportPeriodDto';
 import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
@@ -31,7 +32,11 @@ export class ReportPeriodController {
   getReportPeriod(@Query() query: QueryReportPeriodDto) {
     return this.ReportPeriodService.getAllReport(query);
   }
-
+  @Get('years')
+  async getYears() {
+    const years = await this.ReportPeriodService.getYears();
+    return Response.success(years);
+  }
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
