@@ -269,7 +269,7 @@ export class ReportsService {
     reportId: number,
     accountType?: string,
   ): Promise<Report> {
-    const whereCondition: any = { id: reportId };
+    const whereCondition: FindOptionsWhere<Report> = { id: reportId };
 
     if (accountType !== 'SO') {
       const company = await this.getCompanyByAccountId(accountId);
