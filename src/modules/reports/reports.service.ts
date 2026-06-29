@@ -21,6 +21,8 @@ import {
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
+import { AccountType } from '../auth/entities/account.entity';
 
 interface SectionOneRaw {
   businessTypeId: string;
@@ -94,6 +96,30 @@ export class ReportsService {
 
     private readonly dataSource: DataSource,
   ) {}
+
+  async getReportsByYear(year: number, payload: JwtPayload) {
+    const where: FindOptionsWhere<Report> = {
+      reportPeriod: { year },
+    };
+    if ((payload.accountType as AccountType) === AccountType.DOANH_NGHIEP) {
+      const company = await this.getCompanyByAccountId(payload.sub);
+      if (!company) {
+        throw Response.errorNotFound('Không tìm thấy công ty');
+      }
+      where.companyId = company.id;
+    }
+    const data = await this.reportRepo.find({
+      where,
+      relations: { reportPeriod: true, company: true },
+      order: { createdAt: 'DESC' },
+    });
+
+    // if (!data.length)
+    //   throw Response.errorNotFound(`Năm ${year} không có kỳ báo cáo nào`);
+
+    return Response.success(data, 'Lấy danh sách báo cáo theo năm thành công');
+  }
+
   // 1. Tạo báo cáo mới (DRAFT)
   async createReport(accountId: number, dto: CreateReportDto): Promise<Report> {
     const company = await this.getCompanyByAccountId(accountId);

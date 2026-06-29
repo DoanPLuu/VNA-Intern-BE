@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
-import { AccountType } from '../auth/entities/account.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { ReportsService } from './reports.service';
@@ -22,11 +21,7 @@ import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 // import { existsSync } from 'fs';
 import type { Response as ExpressResponse } from 'express';
 import { ReportPdfService } from './reportsPdf.service';
-interface JwtPayload {
-  sub: number;
-  username: string;
-  accountType: AccountType;
-}
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
 }
@@ -40,7 +35,6 @@ export class ReportsController {
     private readonly reportsService: ReportsService,
     private readonly reportPdfService: ReportPdfService,
   ) {}
-
   // POST /reports
   @Post()
   @ApiOperation({ summary: 'Tạo báo cáo TNLĐ mới (DRAFT)' })
@@ -48,6 +42,13 @@ export class ReportsController {
     return this.reportsService.createReport(req.user.sub, dto);
   }
 
+  @Get('by-year/:year')
+  async getByYear(
+    @Param('year', ParseIntPipe) year: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.reportsService.getReportsByYear(year, req.user);
+  }
   // GET /reports
   @Get()
   @ApiOperation({ summary: 'Danh sách báo cáo của doanh nghiệp' })
