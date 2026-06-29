@@ -16,6 +16,7 @@ import { QueryReportPeriodDto } from './dto/QueryReportPeriodDto';
 import { UpdateReportPeriodDto } from './dto/UpdateReportPeriodDto';
 import { UpdateStatus } from './dto/UpdateStatusDto';
 import { ReportPeriodService } from './report_period.service';
+import { Response } from 'src/common';
 
 @ApiTags('report-periods')
 @Controller('report-periods')
@@ -31,7 +32,11 @@ export class ReportPeriodController {
   getReportPeriod(@Query() query: QueryReportPeriodDto) {
     return this.ReportPeriodService.getAllReport(query);
   }
-
+  @Get('years')
+  async getYears() {
+    const years = await this.ReportPeriodService.getYears();
+    return Response.success(years);
+  }
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

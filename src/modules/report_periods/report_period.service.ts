@@ -88,6 +88,16 @@ export class ReportPeriodService {
 
     return Response.success(report, 'Lấy cấu hình báo cáo thành công');
   }
+
+  async getYears(): Promise<number[]> {
+    const rows = await this.reportRepo
+      .createQueryBuilder('rp')
+      .select('DISTINCT rp.year', 'year')
+      .orderBy('rp.year', 'DESC')
+      .getRawMany<{ year: number }>();
+
+    return rows.map((r) => r.year);
+  }
   async createReportPeriod(dto: CreateReportPeriodDto) {
     const existed = await this.reportRepo.findOne({
       where: {
