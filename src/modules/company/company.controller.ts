@@ -21,7 +21,6 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.auth.guard';
-import { AccountType } from '../auth/entities/account.entity';
 import {
   ConfirmChangeCompanyEmailDTO,
   UpdateCompany,
@@ -32,13 +31,9 @@ import type { Response as ExpressResponse } from 'express';
 import { Response as ApiResponse } from 'src/common';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
+import { AccountType } from '../auth/entities/account.entity';
 
-interface JwtPayload {
-  sub: number;
-  username: string;
-  accountType: AccountType;
-  tokenService: number;
-}
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
 }
@@ -239,7 +234,10 @@ export class CompanyController {
     @Param('taxCode') taxCode: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.companyService.deleteCompany(req.user.accountType, taxCode);
+    return this.companyService.deleteCompany(
+      req.user.accountType as AccountType,
+      taxCode,
+    );
   }
 
   @Patch(':taxCode/restore')
@@ -261,7 +259,7 @@ export class CompanyController {
     @Body() dto: InitializeCompanyPassword,
   ) {
     return this.companyService.reinitializeCompanyPassword(
-      req.user.accountType,
+      req.user.accountType as AccountType,
       dto,
     );
   }

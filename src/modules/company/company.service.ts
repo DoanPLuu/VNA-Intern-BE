@@ -19,12 +19,8 @@ import { InitializeCompanyPassword } from './dto/initialize-company-password.dto
 import { DateUtil } from 'src/common/utils/date.util';
 import { Workbook } from 'exceljs';
 import { SessionService } from '../session/session.service';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
 
-interface JwtPayload {
-  sub: number;
-  username: string;
-  accountType: AccountType;
-}
 // Thêm interface này trên đầu service hoặc file riêng
 type ExcelLoadInput = Parameters<Workbook['xlsx']['load']>[0];
 
@@ -854,7 +850,7 @@ export class CompanyService {
 
     // DN chỉ được sửa thông tin của chính mình
     if (
-      caller.accountType === AccountType.DOANH_NGHIEP &&
+      (caller.accountType as AccountType) === AccountType.DOANH_NGHIEP &&
       company.accountId !== caller.sub
     ) {
       throw ApiResponse.errorForbidden(
@@ -949,7 +945,7 @@ export class CompanyService {
 
     // ── Email: chỉ SO mới được sửa ──────────────────────────
     if (dto.email !== undefined) {
-      if (caller.accountType === AccountType.SO) {
+      if ((caller.accountType as AccountType) === AccountType.SO) {
         const existEmail = await this.accountRepo.findOne({
           where: { email: dto.email },
         });
@@ -963,7 +959,7 @@ export class CompanyService {
       }
       // DN thay đổi email thì hệ thống sẽ gửi mã otp cho email cũ
       else if (
-        caller.accountType === AccountType.DOANH_NGHIEP &&
+        (caller.accountType as AccountType) === AccountType.DOANH_NGHIEP &&
         dto.email !== company.account?.email
       ) {
         throw ApiResponse.errorBad(

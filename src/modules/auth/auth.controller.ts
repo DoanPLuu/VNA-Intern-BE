@@ -26,14 +26,7 @@ import {
 } from './dto/auth.dto';
 import { ForgotPasswordDTO } from './dto/forgot-password.dto';
 import { AccountType } from './entities/account.entity';
-
-interface JwtPayload {
-  sub: number;
-  username: string;
-  accountType: AccountType;
-  roleCode?: string | null;
-  permissions?: string[];
-}
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
 
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
