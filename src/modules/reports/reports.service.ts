@@ -675,6 +675,9 @@ export class ReportsService {
       accidentCauseId: dto.accident_cause_id,
       injuryFactorId: dto.injury_factor_id,
       professionId: dto.profession_id,
+      totalIncidents: 1, // Mỗi dòng chi tiết đại diện cho đúng 1 vụ tai nạn
+      incidentsWithFatalities: dto.total_fatalities > 0 ? 1 : 0, // 1 vụ có người chết nếu số người chết > 0
+      incidentsWithMultipleVictims: dto.total_victims >= 2 ? 1 : 0, // 1 vụ có từ 2 người bị nạn trở lên nếu số nạn nhân >= 2
       totalVictims: dto.total_victims,
       totalFemaleVictims: dto.total_female_victims,
       totalFatalities: dto.total_fatalities,
