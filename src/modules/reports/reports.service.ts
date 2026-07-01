@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'src/common';
+import { JwtPayload } from 'src/common/guards/jwt.strategy';
 import {
   ReportPeriod,
   ReportPeriodStatus,
 } from 'src/modules/report_periods/entities/report_periods.entity';
 import { DataSource, FindOptionsWhere, ILike, In, Repository } from 'typeorm';
+import { AccountType } from '../auth/entities/account.entity';
 import { Company } from '../company/entities/company.entity';
 import { User } from '../user/entities/user.entity';
 import { AccidentDetailDto } from './dto/accident-detail.dto';
@@ -23,8 +25,6 @@ import {
   ReportStatistic,
 } from './entities/report-statistic.entity';
 import { Report, ReportStatus } from './entities/report.entity';
-import { JwtPayload } from 'src/common/guards/jwt.strategy';
-import { AccountType } from '../auth/entities/account.entity';
 
 interface SectionOneRaw {
   businessTypeId: string;
@@ -919,23 +919,45 @@ export class ReportsService {
     return Response.success({ timeline }, 'Lấy tiến độ xử lý thành công');
   }
   async getSummaryReport(query: SummaryQueryDto) {
-    const { reportPeriodId } = query;
-
-    if (!reportPeriodId) {
-      throw Response.errorBad('Vui lòng chọn kỳ báo cáo');
+    const { reportPeriodId, year, provinceId } = query;
+    if (!reportPeriodId && !year) {
+      throw Response.errorBad('Vui lòng chọn kỳ báo cáo hoặc năm báo cáo');
     }
 
-    // ─── PHẦN I: Tổng hợp theo loại hình cơ sở ───────────────────────────
-    const sectionOneRaw = await this.reportRepo
-      .createQueryBuilder('r')
+    // if (!reportPeriodId) {
+    //   throw Response.errorBad('Vui lòng chọn kỳ báo cáo');
+    // }
 
+    // ─── PHẦN I: Tổng hợp theo loại hình cơ sở ───────────────────────────
+    const sectionOneQb = this.reportRepo
+      .createQueryBuilder('r')
       .innerJoin('r.company', 'c')
       .innerJoin('c.businessType', 'bt')
       .innerJoin('r.statistics', 'rs', "rs.reportCategory = 'GENERAL'")
-      .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
       .andWhere('r.status IN (:...statuses)', {
         statuses: ['SUBMITTED', 'APPROVED'],
-      })
+      });
+
+    // Lọc theo kỳ CỤ THỂ hoặc theo NĂM (gộp các kỳ trong năm đó)
+    if (reportPeriodId) {
+      sectionOneQb.andWhere('r.reportPeriodId = :reportPeriodId', {
+        reportPeriodId,
+      });
+    } else if (year) {
+      sectionOneQb
+        .innerJoin('r.reportPeriod', 'rp')
+        .andWhere('rp.year = :year', { year });
+    }
+
+    // Lọc theo TỈNH THÀNH (nếu có)
+    if (provinceId) {
+      sectionOneQb.andWhere('c."province_dkkd_id" = :provinceId', {
+        provinceId,
+      });
+      // hoặc nếu là quan hệ: .innerJoin('c.provinceDkkd', 'pv').andWhere('pv.id = :provinceId', { provinceId })
+    }
+    const sectionOneRaw = await sectionOneQb
+
       .select([
         'bt.id                                   AS "businessTypeId"',
         'bt.code                                 AS "businessTypeCode"',
@@ -1080,17 +1102,42 @@ export class ReportsService {
         accidentCauseId: 'accident_cause_id',
         injuryFactorId: 'injury_factor_id',
       };
-      const raw = await this.reportAccidentDetailRepo
+      // const raw = await this.reportAccidentDetailRepo
+      //   .createQueryBuilder('d')
+      //   .innerJoin('d.reportStatistic', 'rs')
+      //   .innerJoin('rs.report', 'r')
+      //   .leftJoin(`d.${joinAlias}`, 'cat')
+      //   .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
+      //   .andWhere('r.status IN (:...statuses)', {
+      //     statuses: ['SUBMITTED', 'APPROVED'],
+      //   })
+      //   .andWhere(`d."${columnMap[groupField]}" IS NOT NULL`)
+      //   .andWhere('cat.status = true')
+      const qb = this.reportAccidentDetailRepo
         .createQueryBuilder('d')
         .innerJoin('d.reportStatistic', 'rs')
         .innerJoin('rs.report', 'r')
+        .innerJoin('r.company', 'c')
         .leftJoin(`d.${joinAlias}`, 'cat')
-        .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
         .andWhere('r.status IN (:...statuses)', {
           statuses: ['SUBMITTED', 'APPROVED'],
         })
         .andWhere(`d."${columnMap[groupField]}" IS NOT NULL`)
-        .andWhere('cat.status = true')
+        .andWhere('cat.status = true');
+      if (reportPeriodId) {
+        qb.andWhere('r.reportPeriodId = :reportPeriodId', { reportPeriodId });
+      } else if (year) {
+        qb.innerJoin('r.reportPeriod', 'rp').andWhere('rp.year = :year', {
+          year,
+        });
+      }
+
+      // Lọc theo TỈNH THÀNH
+      if (provinceId) {
+        qb.andWhere('c."province_dkkd_id" = :provinceId', { provinceId });
+      }
+      const raw = await qb
+
         .select([
           'cat.id                                       AS "categoryId"',
           'cat.code                                     AS "categoryCode"',
