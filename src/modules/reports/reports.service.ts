@@ -675,6 +675,11 @@ export class ReportsService {
       accidentCauseId: dto.accident_cause_id,
       injuryFactorId: dto.injury_factor_id,
       professionId: dto.profession_id,
+      // Statistic calculations
+      totalIncidents: 1,
+      incidentsWithFatalities: Number(dto.total_fatalities > 0),
+      incidentsWithMultipleVictims: Number(dto.total_victims >= 2),
+      // Existing detail fields
       totalVictims: dto.total_victims,
       totalFemaleVictims: dto.total_female_victims,
       totalFatalities: dto.total_fatalities,
