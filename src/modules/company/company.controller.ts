@@ -203,8 +203,11 @@ export class CompanyController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth()
   @RequirePermissions('CREATE_COMPANY')
-  create(@Body() dto: CreateCompany) {
-    return this.companyService.createCompany(dto);
+  create(@Body() dto: CreateCompany, @Req() req: AuthenticatedRequest) {
+    return this.companyService.createCompany(
+      req.user.accountType as AccountType,
+      dto,
+    );
   }
 
   @Post(':taxCode/ban-company')
@@ -212,8 +215,14 @@ export class CompanyController {
   @RequirePermissions('BAN_COMPANY')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Khóa tài khoản doanh nghiệp' })
-  async banCompany(@Param('taxCode') taxCode: string) {
-    return this.companyService.banCompany(taxCode);
+  async banCompany(
+    @Param('taxCode') taxCode: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.banCompany(
+      req.user.accountType as AccountType,
+      taxCode,
+    );
   }
 
   @Post(':taxCode/unban-company')
@@ -221,8 +230,14 @@ export class CompanyController {
   @RequirePermissions('BAN_COMPANY')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Khôi phục tài khoản doanh nghiệp' })
-  async unbanCompany(@Param('taxCode') taxCode: string) {
-    return this.companyService.unbanCompany(taxCode);
+  async unbanCompany(
+    @Param('taxCode') taxCode: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.unbanCompany(
+      req.user.accountType as AccountType,
+      taxCode,
+    );
   }
 
   @Delete(':taxCode')
@@ -245,8 +260,14 @@ export class CompanyController {
   @RequirePermissions('DELETE_COMPANY')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Khôi phục doanh nghiệp đã xóa' })
-  async restoreCompany(@Param('taxCode') taxCode: string) {
-    return this.companyService.restoreCompany(taxCode);
+  async restoreCompany(
+    @Param('taxCode') taxCode: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.restoreCompany(
+      req.user.accountType as AccountType,
+      taxCode,
+    );
   }
 
   @Post('reinitialize-password')

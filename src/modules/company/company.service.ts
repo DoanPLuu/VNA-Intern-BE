@@ -184,7 +184,11 @@ export class CompanyService {
     return ApiResponse.success(null, 'Khởi tạo mật khẩu thành công');
   }
 
-  async banCompany(tax_code: string) {
+  async banCompany(accountType: AccountType, tax_code: string) {
+    if (accountType !== AccountType.SO)
+      throw ApiResponse.errorForbidden(
+        'Tài khoản hiện tại không thể thực hiện chức năng này',
+      );
     const company = await this.companyRepo.findOne({
       where: { taxCode: tax_code },
       relations: { account: true },
@@ -209,7 +213,11 @@ export class CompanyService {
     );
   }
 
-  async unbanCompany(tax_code: string) {
+  async unbanCompany(accountType: AccountType, tax_code: string) {
+    if (accountType !== AccountType.SO)
+      throw ApiResponse.errorForbidden(
+        'Tài khoản hiện tại không thể thực hiện chức năng này',
+      );
     const company = await this.companyRepo.findOne({
       where: { taxCode: tax_code },
       relations: { account: true },
@@ -258,7 +266,11 @@ export class CompanyService {
     return ApiResponse.success(null, 'Xóa Doanh nghiệp thành công');
   }
 
-  async restoreCompany(tax_code: string) {
+  async restoreCompany(accountType: AccountType, tax_code: string) {
+    if (accountType !== AccountType.SO)
+      throw ApiResponse.errorForbidden(
+        'Tài khoản hiện tại không thể thực hiện chức năng này',
+      );
     const company = await this.companyRepo.findOne({
       where: { taxCode: tax_code },
       relations: { account: true },
@@ -326,7 +338,11 @@ export class CompanyService {
   }
 
   // ── Create ───────────────────────────────────────────────────
-  async createCompany(dto: CreateCompany) {
+  async createCompany(accountType: AccountType, dto: CreateCompany) {
+    if (accountType !== AccountType.SO)
+      throw ApiResponse.errorForbidden(
+        'Tài khoản hiện tại không thể thực hiện chức năng này',
+      );
     await this.checkDuplicates(dto);
 
     // Resolve lookup data
