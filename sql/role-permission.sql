@@ -18,9 +18,9 @@ INSERT INTO permissions (code, name, type, parent_id, created_at, updated_at) VA
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), -- ADMIN có tất cả
 (2, 1), (2, 2), (2, 3), (2, 5),          -- MANAGER không có DELETE
-(3, 1), (3, 2),                           -- STAFF chỉ VIEW + CREATE
+(3, 1), (3, 2), (3, 5),                  -- STAFF: VIEW_USER, CREATE_USER, VIEW_REPORT
 (4, 1), (4, 5),                           -- AUDITOR chỉ VIEW
-(5, 1);                                   -- VIEWER chỉ VIEW_USER
+(5, 1), (5, 5);                           -- VIEWER chỉ VIEW
 
 -- Thêm permissions cho company
 INSERT INTO permissions (code, name, type, parent_id, created_at, updated_at) VALUES
