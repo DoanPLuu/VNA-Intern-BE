@@ -36,21 +36,23 @@ $ npm install
 Project dùng TypeORM để tự tạo bảng theo entity, sau đó dùng các file SQL để đổ dữ liệu tham chiếu (location, business, roles/permissions, danh mục TNLĐ...). **Phải làm đúng thứ tự sau, không chạy tắt hay đảo bước:**
 
 1. **Chạy server một lần để TypeORM tạo bảng:**
+
    ```bash
    npm run start
    ```
+
    Đợi server khởi động xong (log báo app đã listen ở port cấu hình), nghĩa là toàn bộ bảng theo entity đã được tạo trong database.
 
 2. **Dừng server** (`Ctrl+C`), hoặc đảm bảo server đang ở trạng thái đứng yên — **không** đang restart/reload (đặc biệt nếu chạy `start:dev` ở watch mode, vì TypeORM có thể tự đồng bộ lại schema mỗi lần reload, dễ đụng độ với lúc đang đổ dữ liệu).
 
 3. **Chạy lần lượt từng file SQL seed theo đúng thứ tự dưới đây — chạy tuần tự, không chạy song song nhiều file cùng lúc:**
-
    1. `roles_permissions.sql` — seed roles, permissions và role_permissions (ADMIN, MANAGER, STAFF, AUDITOR, VIEWER)
    2. `location.sql` — seed 34 tỉnh/thành và 3321 phường/xã (theo đợt sáp nhập hành chính 2025)
    3. `business.sql` — seed loại hình kinh doanh và ngành nghề kinh doanh (đổi tên từ `business-industry.sql`)
    4. Các file seed danh mục TNLĐ: nguyên nhân tai nạn, yếu tố gây chấn thương, loại chấn thương, nghề nghiệp (theo QĐ 27/2018, QĐ 34/2020)
 
    **Cách chạy (chọn 1 trong 2 cách cho mỗi file):**
+
    ```bash
    # Cách 1
    psql -U postgres -d be_tt -f <ten_file>.sql
@@ -58,11 +60,13 @@ Project dùng TypeORM để tự tạo bảng theo entity, sau đó dùng các f
    # Cách 2 (Windows)
    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d be_tt -f <ten_file>.sql
    ```
+
    Ví dụ chạy lần lượt:
+
    ```bash
-   psql -U postgres -d be_tt -f roles_permissions.sql
-   psql -U postgres -d be_tt -f location.sql
-   psql -U postgres -d be_tt -f business.sql
+   psql -U postgres -d be_tt -f sql/roles_permissions.sql
+   psql -U postgres -d be_tt -f sql/location.sql
+   psql -U postgres -d be_tt -f sql/business.sql
    ```
 
 4. **Khởi động lại server** để sử dụng app với dữ liệu đầy đủ:
@@ -73,6 +77,7 @@ Project dùng TypeORM để tự tạo bảng theo entity, sau đó dùng các f
    ```
 
 > ⚠️ Lưu ý quan trọng:
+>
 > - `location.sql` có dùng `TRUNCATE ... RESTART IDENTITY CASCADE`, sẽ xóa sạch mọi dữ liệu ở các bảng khác đang có khóa ngoại trỏ tới `provinces`/`wards` (ví dụ `companies`, `reports`...). **Chỉ an toàn khi chạy trên database mới, chưa có dữ liệu nghiệp vụ.** Nếu database đã có dữ liệu thật, không chạy lại file này.
 > - Các seed còn lại dùng `INSERT` thường (không idempotent tuyệt đối), nên chỉ chạy trên database sạch hoặc kiểm tra kỹ trước khi chạy lại để tránh trùng dữ liệu.
 > - Không seed và chạy server song song trong cùng một thời điểm — chạy tuần tự để tránh xung đột giữa TypeORM tự đồng bộ schema (nếu `synchronize: true`) và các lệnh SQL đang chạy.
