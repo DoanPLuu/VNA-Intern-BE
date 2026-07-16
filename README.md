@@ -2,175 +2,156 @@
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
-```
-
-## ⚠️ Thứ tự khởi tạo database (bắt buộc theo đúng trình tự)
-
-Project dùng TypeORM để tự tạo bảng theo entity, sau đó dùng các file SQL để đổ dữ liệu tham chiếu (location, business, roles/permissions, danh mục TNLĐ...). **Phải làm đúng thứ tự sau, không chạy tắt hay đảo bước:**
-
-1. **Chạy server một lần để TypeORM tạo bảng:**
-
-   ```bash
-   npm run start
-   ```
-
-   Đợi server khởi động xong (log báo app đã listen ở port cấu hình), nghĩa là toàn bộ bảng theo entity đã được tạo trong database.
-
-2. **Dừng server** (`Ctrl+C`), hoặc đảm bảo server đang ở trạng thái đứng yên — **không** đang restart/reload (đặc biệt nếu chạy `start:dev` ở watch mode, vì TypeORM có thể tự đồng bộ lại schema mỗi lần reload, dễ đụng độ với lúc đang đổ dữ liệu).
-
-3. **Chạy lần lượt từng file SQL seed theo đúng thứ tự dưới đây — chạy tuần tự, không chạy song song nhiều file cùng lúc:**
-   1. `roles_permissions.sql` — seed roles, permissions và role_permissions (ADMIN, MANAGER, STAFF, AUDITOR, VIEWER)
-   2. `location.sql` — seed 34 tỉnh/thành và 3321 phường/xã (theo đợt sáp nhập hành chính 2025)
-   3. `business.sql` — seed loại hình kinh doanh và ngành nghề kinh doanh (đổi tên từ `business-industry.sql`)
-   4. Các file seed danh mục TNLĐ: nguyên nhân tai nạn, yếu tố gây chấn thương, loại chấn thương, nghề nghiệp (theo QĐ 27/2018, QĐ 34/2020)
-
-   **Cách chạy (chọn 1 trong 2 cách cho mỗi file):**
-
-   ```bash
-   # Cách 1
-   psql -U postgres -d be_tt -f <ten_file>.sql
-
-   # Cách 2 (Windows)
-   & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d be_tt -f <ten_file>.sql
-   ```
-
-   Ví dụ chạy lần lượt:
-
-   ```bash
-   psql -U postgres -d be_tt -f sql/roles_permissions.sql
-   psql -U postgres -d be_tt -f sql/location.sql
-   psql -U postgres -d be_tt -f sql/business.sql
-   ```
-
-4. **Khởi động lại server** để sử dụng app với dữ liệu đầy đủ:
-   ```bash
-   npm run start
-   # hoặc
-   npm run start:dev
-   ```
-
-> ⚠️ Lưu ý quan trọng:
->
-> - `location.sql` có dùng `TRUNCATE ... RESTART IDENTITY CASCADE`, sẽ xóa sạch mọi dữ liệu ở các bảng khác đang có khóa ngoại trỏ tới `provinces`/`wards` (ví dụ `companies`, `reports`...). **Chỉ an toàn khi chạy trên database mới, chưa có dữ liệu nghiệp vụ.** Nếu database đã có dữ liệu thật, không chạy lại file này.
-> - Các seed còn lại dùng `INSERT` thường (không idempotent tuyệt đối), nên chỉ chạy trên database sạch hoặc kiểm tra kỹ trước khi chạy lại để tránh trùng dữ liệu.
-> - Không seed và chạy server song song trong cùng một thời điểm — chạy tuần tự để tránh xung đột giữa TypeORM tự đồng bộ schema (nếu `synchronize: true`) và các lệnh SQL đang chạy.
-
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+<p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
 
 # VNA-Intern-BE
 
-Intern project for VNA Group Co
+Intern project cho VNA Group Co — hệ thống báo cáo tai nạn lao động (TNLĐ) và quản lý doanh nghiệp, backend NestJS + TypeORM + PostgreSQL.
 
-# Tạo App Password Gmail (bắt buộc, không dùng mật khẩu thường được):
+## Yêu cầu môi trường
 
-1. Vào [myaccount.google.com](https://myaccount.google.com/) → Bảo mật
-2. Bật Xác minh 2 bước nếu chưa bật
-3. Tìm Mật khẩu ứng dụng → Tạo mới → đặt tên be_project
-4. Copy mật khẩu 16 ký tự vào MAIL_PASSWORD trong file .env
+- Node.js >= 18
+- PostgreSQL >= 18
+- npm
 
-# Cài đặt các thư viện trên để có thể thực hiện chức năng upload, xem, xóa, sửa, file
+## Hướng dẫn cài đặt và chạy (thực hiện đúng thứ tự)
 
-npm install multer
+### Bước 1: Cài đặt dependencies
+
+```bash
+npm install
+```
+
+Các thư viện phục vụ upload/xem/xóa/sửa file (`multer`, `xlsx`) đã có sẵn trong `package.json` nên bước này cài luôn, không cần cài thêm thủ công. Nếu vì lý do nào đó thiếu, cài bổ sung:
+
+```bash
+npm install multer xlsx
 npm install -D @types/multer
-npm install xlsx
+```
 
-# Tạo thư mục uploads/ ở root project (cùng cấp với src/):
+### Bước 2: Tạo thư mục uploads
 
+```bash
 mkdir uploads
 echo "" > uploads/.gitkeep
+```
 
-# Thêm uploads/ vào .gitignore
+Thư mục này dùng để lưu file upload, đã được thêm vào `.gitignore` (chỉ giữ lại `.gitkeep`):
 
-uploads/\*
+```gitignore
+uploads/*
 !uploads/.gitkeep
+```
+
+### Bước 3: Tạo database PostgreSQL
+
+Tạo database rỗng tên `be_tt` (hoặc tên khác tuỳ bạn, miễn khớp với `.env`):
+
+```bash
+psql -U postgres -c "CREATE DATABASE be_tt;"
+```
+
+### Bước 4: Tạo file `.env`
+
+Tạo file `.env` ở thư mục gốc project với nội dung sau (thay giá trị cho phù hợp với máy của bạn):
+
+```properties
+# JWT
+JWT_ACCESS_SECRET=your_jwt_access_secret
+JWT_REFRESH_SECRET=your_jwt_refresh_secret
+JWT_ACCESS_TOKEN_EXPIRES_IN=1h
+JWT_REFRESH_TOKEN_EXPIRES_IN=7d
+JWT_REFRESH_REMEMBER_TOKEN_EXPIRES_IN=30d
+
+# Database
+DB_USERNAME=postgres
+DB_PASSWORD=your_db_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=be_tt
+
+# App
+API_PORT=8080
+
+# OTP
+OTP_EXPIRES_MINUTES=5
+
+# Mail (Gmail SMTP — bắt buộc dùng App Password, xem hướng dẫn bên dưới)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=your_email@gmail.com
+MAIL_PASSWORD=your_gmail_app_password
+MAIL_FROM=your_email@gmail.com
+```
+
+> ⚠️ Không commit file `.env` thật (chứa mật khẩu/secret thật) lên git hoặc gửi kèm khi nộp bài. Nếu cần chia sẻ mẫu, tạo file `.env.example` với giá trị giả như trên.
+
+#### Tạo Gmail App Password (bắt buộc, không dùng mật khẩu Gmail thường)
+
+1. Vào [myaccount.google.com](https://myaccount.google.com/) → Bảo mật
+2. Bật **Xác minh 2 bước** nếu chưa bật
+3. Tìm **Mật khẩu ứng dụng** → Tạo mới → đặt tên `be_project`
+4. Copy mật khẩu 16 ký tự vào `MAIL_PASSWORD` trong `.env`
+
+### Bước 5: Chạy server lần đầu để TypeORM tự tạo bảng
+
+```bash
+npm run start
+```
+
+Đợi server khởi động xong (log báo app đã listen ở `API_PORT` đã cấu hình), nghĩa là toàn bộ bảng theo entity đã được tạo trong database.
+
+Sau đó **dừng server** (`Ctrl+C`), đảm bảo server đang đứng yên — **không** chạy ở watch mode (`start:dev`) trong lúc seed, vì TypeORM có thể tự đồng bộ lại schema mỗi lần reload, dễ đụng độ với lúc đang đổ dữ liệu.
+
+### Bước 6: Seed dữ liệu bằng SQL (chạy tuần tự, đúng thứ tự, không chạy song song)
+
+```bash
+psql -U postgres -d be_tt -f sql/roles_permissions.sql
+psql -U postgres -d be_tt -f sql/location.sql
+psql -U postgres -d be_tt -f sql/business.sql
+```
+
+Sau đó chạy tiếp các file seed danh mục TNLĐ (nguyên nhân tai nạn, yếu tố gây chấn thương, loại chấn thương, nghề nghiệp — theo QĐ 27/2018, QĐ 34/2020) trong thư mục `sql/`.
+
+**Trên Windows**, nếu `psql` chưa có trong PATH, dùng đường dẫn đầy đủ:
+
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d be_tt -f sql/roles_permissions.sql
+```
+
+> ⚠️ Lưu ý quan trọng:
+>
+> - `location.sql` dùng `TRUNCATE ... RESTART IDENTITY CASCADE`, sẽ xóa sạch dữ liệu ở các bảng có khóa ngoại trỏ tới `provinces`/`wards` (ví dụ `companies`, `reports`...). **Chỉ chạy trên database mới, chưa có dữ liệu nghiệp vụ.** Nếu database đã có dữ liệu thật, không chạy lại file này.
+> - Các seed còn lại dùng `INSERT` thường (chưa idempotent tuyệt đối), chỉ chạy trên database sạch hoặc kiểm tra kỹ trước khi chạy lại để tránh trùng dữ liệu.
+> - Không seed và chạy server song song — chạy tuần tự để tránh xung đột giữa TypeORM tự đồng bộ schema (nếu `synchronize: true`) và các lệnh SQL đang chạy.
+
+### Bước 7: Khởi động lại server
+
+```bash
+npm run start
+# hoặc chạy watch mode khi phát triển
+npm run start:dev
+```
+
+Server sẵn sàng sử dụng với dữ liệu đầy đủ tại `http://localhost:<API_PORT>`.
+
+## Các lệnh khác
+
+```bash
+# production mode
+npm run start:prod
+
+# unit tests
+npm run test
+
+# e2e tests
+npm run test:e2e
+
+# test coverage
+npm run test:cov
+```
+
+## Tài liệu tham khảo NestJS
+
+- [NestJS Documentation](https://docs.nestjs.com)
+- [NestJS Discord](https://discord.gg/G7Qnnhy)
