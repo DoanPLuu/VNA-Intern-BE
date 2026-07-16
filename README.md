@@ -174,12 +174,3 @@ echo "" > uploads/.gitkeep
 
 uploads/\*
 !uploads/.gitkeep
-
-# Luồng xử lý khi DN đính kèm file báo cáo TNLĐ
-
-1. FE gọi POST /upload → nhận về { filePath: '/uploads/xxx.pdf', fileName: 'baocaoTNLD.pdf' }
-2. FE gọi PATCH /reports/:id/attachment → gửi { attachment_url, attachment_name } để lưu vào Report
-3. Tóm lại:
-   POST /upload → FE upload file, nhận về filePath
-   PATCH /reports/:id/attachment → FE gửi filePath để lưu vào Report
-   PATCH /reports/:id/submit → FE nộp báo cáo (lúc này đã có file đính kèm)
