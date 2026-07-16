@@ -61,7 +61,7 @@ export class UserService {
     private readonly sessionService: SessionService,
   ) {}
 
-  // ── Tìm kiếm ────────────────────────────────────────────────
+  // Tìm kiếm
 
   async findAccountByUsername(username: string): Promise<Account | null> {
     return this.accountRepo.findOne({ where: { username } });
@@ -78,7 +78,7 @@ export class UserService {
     });
   }
 
-  // ── Tạo tài khoản ───────────────────────────────────────────
+  // Tạo tài khoản
 
   /**
    * Tạo Account (SO) + User profile rỗng đi kèm.
@@ -108,7 +108,7 @@ export class UserService {
     return savedAccount;
   }
 
-  // ── Cập nhật profile ────────────────────────────────────────
+  // Cập nhật profile
 
   async updateUserProfile(
     accountId: number,
@@ -155,7 +155,7 @@ export class UserService {
     return this.userRepo.save(user);
   }
 
-  // ── Lấy profile đầy đủ ──────────────────────────────────────
+  // Lấy profile đầy đủ
   private resolveLocalPath(relativePath: string): string {
     return join(process.cwd(), ...relativePath.split('/'));
   }
@@ -984,9 +984,6 @@ export class UserService {
         ward: true,
       },
     });
-    // if (!user) {
-    //   throw Response.errorNotFound('Không tìm thấy người dùng');
-    // }
     if (
       !user ||
       user.account.isDeleted ||

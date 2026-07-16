@@ -17,13 +17,13 @@ export class Permission {
   id: number;
 
   @Column({ unique: true })
-  code: string; // VD: VIEW_USER, CREATE_USER, DELETE_USER
+  code: string;
 
   @Column()
-  name: string; // VD: Xem người dùng, Tạo người dùng
+  name: string;
 
   @Column()
-  type: string; // VD: VIEW, CREATE, UPDATE, DELETE
+  type: string;
 
   // Phân cấp permission (parent_id tự tham chiếu)
   @Column({ name: 'parent_id', type: 'int', nullable: true })

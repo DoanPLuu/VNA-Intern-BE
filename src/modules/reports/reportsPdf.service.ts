@@ -291,21 +291,21 @@ export class ReportPdfService {
 </html>`;
   }
 
-  // ─── Helper: convert decimal string từ TypeORM về number ───────────────
+  // Helper: convert decimal string từ TypeORM về number
   private toNum(val: number | string | null | undefined): number {
     if (val === null || val === undefined) return 0;
     const n = typeof val === 'string' ? parseFloat(val) : val;
     return isNaN(n) ? 0 : n;
   }
 
-  // ─── Helper: format số dấu chấm phân cách nghìn ────────────────────────
+  // Helper: format số dấu chấm phân cách nghìn
   private num(val: number | null | undefined): string {
     const n = this.toNum(val);
     if (n === 0) return '0';
     return n.toLocaleString('de-DE');
   }
 
-  // ─── Helper: render một dòng data (13 cột data) ────────────────────────
+  // Helper: render một dòng data (13 cột data)
   private dataRow(
     label: string,
     maso: string,
@@ -331,7 +331,7 @@ export class ReportPdfService {
     </tr>`;
   }
 
-  // ─── Helper: build map causeId -> stat ─────────────────────────────────
+  // Helper: build map causeId -> stat
   private buildCauseStatMap(
     details: ReportAccidentDetail[],
   ): Map<number, Partial<ReportStatistic>> {
@@ -378,7 +378,7 @@ export class ReportPdfService {
     return map;
   }
 
-  // ─── Helper: tổng general + subsidized ─────────────────────────────────
+  // Helper: tổng general + subsidized
   private sumStatistics(
     a: ReportStatistic | undefined,
     b: ReportStatistic | undefined,
@@ -409,7 +409,7 @@ export class ReportPdfService {
     };
   }
 
-  // ─── Helper: group injury/profession details ────────────────────────────
+  // Helper: group injury/profession details
   private groupByCategory(
     details: ReportAccidentDetail[],
     field: 'injuryFactor' | 'profession',

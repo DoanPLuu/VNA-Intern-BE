@@ -41,7 +41,6 @@ export class CreateCompany {
   @IsString()
   business_industry: string;
 
-  // Ngày cấp GPKD
   @ApiProperty({ example: '09/01/2020' })
   @Transform(({ value }: { value: string | null | undefined }) => {
     if (!value) return null;
@@ -55,7 +54,6 @@ export class CreateCompany {
   })
   license_issue_date?: Date | null;
 
-  // Tỉnh/Thành phố đăng ký kinh doanh
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsNotEmpty({
     message: 'Bắt buộc phải cung cấp tỉnh/thành phố đăng ký kinh doanh',
@@ -63,7 +61,6 @@ export class CreateCompany {
   @IsString()
   license_registration_province: string;
 
-  // Phường/Xã đăng ký kinh doanh
   @ApiProperty({ example: 'Phường Chợ Lớn' })
   @IsNotEmpty({
     message: 'Bắt buộc phải cung cấp phường xã đăng ký kinh doanh',
@@ -76,7 +73,6 @@ export class CreateCompany {
   @IsString()
   license_registration_adress?: string | null;
 
-  // Tên doanh nghiệp bằng tiếng nước ngoài
   @ApiProperty({ example: 'GNA Group' })
   @IsOptional()
   @IsString()
@@ -97,7 +93,6 @@ export class CreateCompany {
   @IsString()
   business_phone?: string | null;
 
-  // Tỉnh/thành phố hoạt động kinh doanh
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsOptional()
   @IsString()
@@ -123,7 +118,6 @@ export class CreateCompany {
   @IsString()
   representative_phone?: string | null;
 
-  // Đường dẫn file giấy phép kinh doanh
   @ApiProperty()
   @IsOptional()
   @IsString()

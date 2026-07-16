@@ -36,7 +36,6 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    // Bổ sung luồng xử lý cho DN
     const user = request.user;
     if (user?.accountType === AccountType.DOANH_NGHIEP) {
       return true;

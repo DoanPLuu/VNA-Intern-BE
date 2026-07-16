@@ -42,8 +42,6 @@ interface AuthenticatedRequest extends Request {
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
-  // ── Public / không cần auth ──────────────────────────────────
-
   @Post('/preview-company')
   preview(@Body() dto: CreateCompany) {
     return this.companyService.previewCompany(dto);
@@ -58,8 +56,6 @@ export class CompanyController {
   getAllBusinessIndustry() {
     return this.companyService.getAllBusinessIndustry();
   }
-
-  // ── Import / Template (đặt TRƯỚC route động ':tax_code') ────
 
   @Get('import/template')
   @UseGuards(JwtAuthGuard)
@@ -124,7 +120,7 @@ export class CompanyController {
     return this.companyService.getDeletedCompanies();
   }
 
-  // ── Cần auth, dùng chung SO/DN ───────────────────────────────
+  // Cần auth, dùng chung SO/DN
 
   @Get('companies')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -165,7 +161,7 @@ export class CompanyController {
     return this.companyService.updateCompany(taxCode, dto, req.user);
   }
 
-  // ── Chỉ DN ───────────────────────────────────────────────────
+  // Chỉ DN
 
   @Post(':taxCode/change-email/request')
   @UseGuards(JwtAuthGuard)
@@ -197,7 +193,7 @@ export class CompanyController {
     );
   }
 
-  // ── Chỉ SO ───────────────────────────────────────────────────
+  // Chỉ SO
 
   @Post('/create-company')
   @UseGuards(JwtAuthGuard, PermissionsGuard)

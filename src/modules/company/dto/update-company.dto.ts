@@ -11,7 +11,7 @@ import dayjs from 'src/common/utils/dayjs';
 import { IsNotFutureDate } from 'src/common/validators/is-not-future-date.decorator';
 
 export class UpdateCompany {
-  // ── Thông tin doanh nghiệp ──────────────────────────────────
+  // Thông tin doanh nghiệp
   @ApiProperty({ example: 'Công ty TNHH Môi trường xanh' })
   @IsOptional()
   @Transform(({ value }: { value: string }) => value?.trim())
@@ -48,7 +48,7 @@ export class UpdateCompany {
   })
   license_issue_date?: Date | null;
 
-  // ── Địa chỉ ĐKKD ────────────────────────────────────────────
+  // Địa chỉ ĐKKD
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsOptional()
   @IsString()
@@ -86,7 +86,7 @@ export class UpdateCompany {
   @IsString()
   representative_phone?: string | null;
 
-  // ── Địa chỉ HĐKD ────────────────────────────────────────────
+  // Địa chỉ HĐKD
   @ApiProperty()
   @IsOptional()
   @IsString()
@@ -102,7 +102,7 @@ export class UpdateCompany {
   @IsString()
   business_operating_adress?: string | null;
 
-  // ── File đính kèm ───────────────────────────────────────────
+  // File đính kèm
   @ApiProperty()
   @IsOptional()
   @IsString()

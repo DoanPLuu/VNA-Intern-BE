@@ -41,13 +41,11 @@ export class UserProfileDto {
   @IsString()
   position: string;
 
-  // Truyền tên tỉnh (vd: "Tp Hồ Chí Minh") → service tự tìm id
   @ApiProperty({ example: 'Tp Hồ Chí Minh' })
   @IsOptional()
   @IsString()
   province?: string;
 
-  // Truyền tên phường/xã (vd: "Phường Chợ Lớn") → service tự tìm id
   @ApiProperty({ example: 'Phường Chợ Lớn' })
   @IsOptional()
   @IsString()

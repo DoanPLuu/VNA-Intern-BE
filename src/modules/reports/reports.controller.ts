@@ -57,23 +57,6 @@ export class ReportsController {
     return this.reportsService.getMyReports(req.user.sub);
   }
 
-  // @Get('template')
-  // downloadTemplate(@Res() res: ExpressResponse) {
-  //   const filePath = join(
-  //     process.cwd(),
-  //     'src',
-  //     'public',
-  //     'templates',
-  //     'Phu-Luc-XII-Mau-Bao-Cao-TNLD.doc',
-  //   );
-  //   if (!existsSync(filePath)) {
-  //     throw ApiResponse.errorNotFound('File mẫu không tồn tại');
-  //   }
-  //   console.log(filePath);
-  //   console.log(existsSync(filePath));
-  //   res.download(filePath, 'Mau-Bao-Cao-TNLD-Dinh-Ky.doc');
-  // }
-
   // GET /reports/:id/status
   @Get(':id/status')
   @ApiOperation({ summary: 'Xem tiến trình báo cáo (stepper)' })

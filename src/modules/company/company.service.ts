@@ -21,7 +21,6 @@ import { Workbook } from 'exceljs';
 import { SessionService } from '../session/session.service';
 import { JwtPayload } from 'src/common/guards/jwt.strategy';
 
-// Thêm interface này trên đầu service hoặc file riêng
 type ExcelLoadInput = Parameters<Workbook['xlsx']['load']>[0];
 
 type ImportCompanyRow = {
@@ -30,7 +29,7 @@ type ImportCompanyRow = {
   taxCode: string;
   businessType: string;
   businessIndustry: string;
-  licenseIssueDate?: string; // DD-MM-YYYY
+  licenseIssueDate?: string;
   licenseRegistrationProvince: string;
   licenseRegistrationWard: string;
   licenseRegistrationAddress?: string;
@@ -77,8 +76,6 @@ export class CompanyService {
     private readonly locationService: LocationService,
     private readonly sessionService: SessionService,
   ) {}
-
-  // ── Lookup ───────────────────────────────────────────────────
 
   getAllCompanies() {
     return this.companyRepo.find({
@@ -296,7 +293,6 @@ export class CompanyService {
     );
   }
 
-  // ── Preview (validate + trả về data đã resolve, chưa lưu) ────
   async previewCompany(dto: CreateCompany) {
     await this.checkDuplicates(dto);
 
@@ -337,7 +333,7 @@ export class CompanyService {
     );
   }
 
-  // ── Create ───────────────────────────────────────────────────
+  // Create
   async createCompany(accountType: AccountType, dto: CreateCompany) {
     if (accountType !== AccountType.SO)
       throw ApiResponse.errorForbidden(
@@ -397,11 +393,11 @@ export class CompanyService {
       'Thêm doanh nghiệp thành công',
     );
   }
-  // ── Sinh file Excel mẫu (data + hướng dẫn + danh mục) ─────────
+  // Sinh file Excel mẫu (data + hướng dẫn + danh mục)
   async generateImportCompanyTemplate(): Promise<Buffer> {
     const workbook = new Workbook();
 
-    // ── Sheet 1: dữ liệu nhập ──────────────────────────────────────
+    // Sheet 1: dữ liệu nhập
     const dataSheet = workbook.addWorksheet('Companies');
     dataSheet.columns = [
       { header: 'businessName', key: 'businessName', width: 30 },
@@ -465,7 +461,7 @@ export class CompanyService {
       businessOperatingAddress: '192 Nguyễn Trãi',
     });
 
-    // ── Sheet 2: hướng dẫn ───────────────────────────────────────
+    // Sheet 2: hướng dẫn
     const guideSheet = workbook.addWorksheet('HuongDan');
     guideSheet.columns = [
       { header: 'Cột', key: 'column', width: 28 },
@@ -558,7 +554,7 @@ export class CompanyService {
       ],
     ]);
 
-    // ── Sheet 3: danh mục tham chiếu (businessType / industry / province / ward) ──
+    // Sheet 3: danh mục tham chiếu (businessType / industry / province / ward)
     const [businessTypes, businessIndustries, provinces] = await Promise.all([
       this.businessTypeRepo.find({ where: { status: 'ACTIVE' } }),
       this.businessIndustryRepo.find({ where: { status: 'ACTIVE' } }),
@@ -586,7 +582,7 @@ export class CompanyService {
       });
     }
 
-    // ── Sheet 4: danh mục phường/xã (gộp theo tỉnh, để tránh quá nhiều cột) ──
+    // Sheet 4: danh mục phường/xã (gộp theo tỉnh, để tránh quá nhiều cột)
     const wardSheet = workbook.addWorksheet('DanhMucPhuongXa');
     wardSheet.columns = [
       { header: 'Tỉnh/Thành phố', key: 'province', width: 28 },
@@ -603,7 +599,7 @@ export class CompanyService {
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
-  /* ── Preview trước khi import thật ───────────────────────────── */
+  // Preview trước khi import thật
 
   async previewImportCompanies(fileBuffer: Buffer) {
     const rows = await this.parseImportCompanyFile(fileBuffer);
@@ -729,7 +725,7 @@ export class CompanyService {
     );
   }
 
-  // ── Preview Update ──────────────────────────────────────────
+  // Preview Update
   async previewUpdateCompany(taxCode: string, dto: UpdateCompany) {
     const company = await this.companyRepo.findOne({
       where: { taxCode },
@@ -874,7 +870,7 @@ export class CompanyService {
       );
     }
 
-    // ── Resolve lookups nếu có thay đổi ─────────────────────
+    // Resolve lookups nếu có thay đổi
     if (dto.business_type !== undefined) {
       const businessType = await this.businessTypeRepo.findOne({
         where: { name: dto.business_type.trim() },
@@ -937,7 +933,7 @@ export class CompanyService {
       company.wardHdkdId = ward?.id ?? null;
     }
 
-    // ── Cập nhật các field đơn giản ─────────────────────────
+    // Cập nhật các field đơn giản
     if (dto.business_name !== undefined)
       company.companyName = dto.business_name;
     if (dto.foreign_business_name !== undefined)
@@ -959,7 +955,7 @@ export class CompanyService {
     if (dto.other_document_file_url !== undefined)
       company.gtkFilePath = dto.other_document_file_url;
 
-    // ── Email: chỉ SO mới được sửa ──────────────────────────
+    // Email: chỉ SO mới được sửa
     if (dto.email !== undefined) {
       if ((caller.accountType as AccountType) === AccountType.SO) {
         const existEmail = await this.accountRepo.findOne({
@@ -1100,7 +1096,7 @@ export class CompanyService {
     return ApiResponse.success(null, 'Thay đổi email thành công');
   }
 
-  // REGISTER DN──────────────────────────────────────────
+  // REGISTER DN
   async registerCompany(dto: CreateCompany) {
     // Kiểm tra đã có account PENDING với tax_code này chưa
     const existingCompany = await this.companyRepo.findOne({
@@ -1179,7 +1175,7 @@ export class CompanyService {
       };
     }
 
-    // ── Chưa có → kiểm tra email rồi tạo mới bình thường ────────
+    // Chưa có → kiểm tra email rồi tạo mới bình thường
     if (dto.email) {
       const existAccount = await this.accountRepo.findOne({
         where: { email: dto.email },
@@ -1241,9 +1237,8 @@ export class CompanyService {
     };
   }
 
-  /**
-   * Bước 2: Kích hoạt Account + Company sau khi OTP hợp lệ.
-   */
+  // Bước 2: Kích hoạt Account + Company sau khi OTP hợp lệ.
+
   async activateCompany(accountId: number) {
     const company = await this.companyRepo.findOne({ where: { accountId } });
     if (!company) {
@@ -1259,7 +1254,7 @@ export class CompanyService {
     return ApiResponse.success(null, 'Đăng ký doanh nghiệp thành công');
   }
 
-  // ── Private helpers ──────────────────────────────────────────
+  // Private helpers
   private getOTPCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
@@ -1282,10 +1277,9 @@ export class CompanyService {
     }
   }
 
-  /**
-   * Resolve tất cả foreign-key lookups (businessType, businessIndustry, province, ward).
-   * Trả về object chứa các entity đã tìm được, hoặc { error } nếu không tìm thấy.
-   */
+  // Resolve tất cả foreign-key lookups (businessType, businessIndustry, province, ward).
+  // Trả về object chứa các entity đã tìm được, hoặc { error } nếu không tìm thấy.
+
   private async resolveLookups(dto: CreateCompany): Promise<{
     businessType: BusinessType;
     businessIndustry: BusinessIndustry;
@@ -1352,7 +1346,7 @@ export class CompanyService {
     };
   }
 
-  // ── Private helper for import file ──────────────────────────────────────────
+  // Private helper for import file
   private formatDateToDdMmYyyy(date: Date): string {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1465,7 +1459,7 @@ export class CompanyService {
     return `${year}-${month}-${day}`;
   }
 
-  // ── Đọc file Excel ra danh sách row thô ───────────────────────
+  // Đọc file Excel ra danh sách row thô
   private async parseImportCompanyFile(
     fileBuffer: Buffer,
   ): Promise<ImportCompanyRow[]> {
@@ -1569,11 +1563,10 @@ export class CompanyService {
     return rows;
   }
 
-  // ── Validate toàn bộ rows, resolve các lookup id ──────────────
+  // Validate toàn bộ rows, resolve các lookup id
   private async validateImportCompanyRows(
     rows: ImportCompanyRow[],
   ): Promise<PreparedImportCompanyRow[]> {
-    // ── Preload business type / industry theo tên (giảm query lặp) ──
     const businessTypeNames = [
       ...new Set(rows.map((r) => r.businessType).filter(Boolean)),
     ];
@@ -1597,7 +1590,6 @@ export class CompanyService {
       businessIndustries.map((bi) => [bi.name, bi]),
     );
 
-    // ── Preload tax code / email đã tồn tại trong DB ────────────────
     const taxCodes = [...new Set(rows.map((r) => r.taxCode).filter(Boolean))];
     const emails = [...new Set(rows.map((r) => r.email).filter(Boolean))];
 
@@ -1621,7 +1613,7 @@ export class CompanyService {
       existingAccounts.map((a) => a.email?.trim()).filter(Boolean),
     );
 
-    // ── Đếm trùng lặp trong cùng 1 file ──────────────────────────────
+    // Đếm trùng lặp trong cùng 1 file
     const taxCodeCounter = new Map<string, number>();
     const emailCounter = new Map<string, number>();
 
@@ -1721,7 +1713,7 @@ export class CompanyService {
       if (row.businessIndustry && !businessIndustry) {
         errors.push('Ngành nghề kinh doanh không tồn tại');
       }
-      // ── Resolve địa chỉ ĐKKD (bắt buộc) ──────────────────────────
+      // Resolve địa chỉ ĐKKD (bắt buộc)
       let provinceDkkdId: number | null = null;
       let wardDkkdId: number | null = null;
 
@@ -1756,7 +1748,7 @@ export class CompanyService {
         }
       }
 
-      // ── Resolve địa chỉ HĐKD (optional) ──────────────────────────
+      // Resolve địa chỉ HĐKD (optional)
       let provinceHdkdId: number | null = null;
       let wardHdkdId: number | null = null;
 

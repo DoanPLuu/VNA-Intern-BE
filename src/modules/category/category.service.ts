@@ -102,7 +102,6 @@ export class CategoryService {
     });
     if (existing) throw Response.errorDuplicated(`Mã '${dto.code}' đã tồn tại`);
 
-    // Kiểm tra parent tồn tại
     const parent = await this.InjuryTypeRepo.findOne({
       where: { id: dto.parentId },
     });
@@ -176,7 +175,6 @@ export class CategoryService {
     });
     if (existing) throw Response.errorDuplicated(`Mã '${dto.code}' đã tồn tại`);
 
-    // Xác định level dựa vào parentId
     let level = 'Cấp 1';
     if (dto.parentId) {
       const parent = await this.ProfessionRepo.findOne({

@@ -23,7 +23,7 @@ export class CreateInjuryTypeDto {
   name: string;
   @ApiProperty({ example: 3 })
   @IsInt()
-  parentId: number; // bắt buộc vì cấp 2 phải có cha
+  parentId: number;
 }
 
 export class CreateProfessionDto {
@@ -36,5 +36,5 @@ export class CreateProfessionDto {
   @ApiProperty({ example: 38 })
   @IsInt()
   @IsOptional()
-  parentId?: number | null; // nullable vì cấp 1 không có cha
+  parentId?: number | null;
 }

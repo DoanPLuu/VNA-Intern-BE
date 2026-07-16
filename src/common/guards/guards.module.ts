@@ -13,10 +13,7 @@ import { JwtStrategy } from './jwt.strategy';
     JwtModule.register({}),
     TypeOrmModule.forFeature([Account]),
   ],
-  providers: [
-    JwtAuthGuard,
-    JwtStrategy, // ← Đăng ký để Passport biết đến strategy 'jwt'
-  ],
+  providers: [JwtAuthGuard, JwtStrategy],
   exports: [JwtAuthGuard],
 })
 export class GuardsModule {}

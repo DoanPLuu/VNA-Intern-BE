@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { SummaryQueryDto } from './dto/summary-report.dto';
 import { ReportsService } from './reports.service';
 
-// ── Định nghĩa type cho data trả về từ getSummaryReport ──────
+// Định nghĩa type cho data trả về từ getSummaryReport
 interface SectionOneRow {
   businessTypeId: number;
   businessTypeCode: string;
@@ -114,7 +114,7 @@ export class ReportDocxService {
       year: period?.year ?? new Date().getFullYear(),
       reportDate: new Date().toLocaleDateString('vi-VN'),
 
-      // ── Phần I: Dòng tổng (prefix t_) ──────────────────────────────────────
+      // Phần I: Dòng tổng (prefix t_)
       t_totalCompanies: total.totalCompanies,
       t_companiesJoined: total.totalCompanies,
       t_totalEmployees: total.totalEmployees,
@@ -136,7 +136,7 @@ export class ReportDocxService {
       t_ktnld: total.ktnld,
       t_kChet: total.kChet,
 
-      // ── Phần I: Bảng lặp theo loại hình DN ─────────────────────────────────
+      // Phần I: Bảng lặp theo loại hình DN
       sectionOneRows: rows.map((row, i) => ({
         stt: i + 1,
         businessTypeName: row.businessTypeName,
@@ -163,7 +163,7 @@ export class ReportDocxService {
         kChet: row.kChet,
       })),
 
-      // ── Phần II: 3 nhóm lặp ─────────────────────────────────────────────────
+      // Phần II: 3 nhóm lặp
       byProfession: mapSectionTwo(data.sectionTwo.byProfession),
       byAccidentCause: mapSectionTwo(data.sectionTwo.byAccidentCause),
       byInjuryFactor: mapSectionTwo(data.sectionTwo.byInjuryFactor),

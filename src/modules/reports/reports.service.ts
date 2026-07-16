@@ -119,9 +119,6 @@ export class ReportsService {
       order: { createdAt: 'DESC' },
     });
 
-    // if (!data.length)
-    //   throw Response.errorNotFound(`Năm ${year} không có kỳ báo cáo nào`);
-
     return Response.success(data, 'Lấy danh sách báo cáo theo năm thành công');
   }
 
@@ -148,17 +145,6 @@ export class ReportsService {
     dto.subsidized_details.forEach((d, i) =>
       this.validateStatisticDto(d, `Chi tiết vụ TNĐHTC số ${i + 1}`),
     );
-    // // Validate số lượng detail khớp với total_accidents
-    // if (dto.general_details.length !== dto.general_statistic.total_accidents)
-    //   throw Response.errorBad(
-    //     `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
-    //   );
-    // if (
-    //   dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
-    // )
-    //   throw Response.errorBad(
-    //     `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
-    //   );
 
     // Dùng transaction để đảm bảo toàn vẹn dữ liệu
     return this.dataSource.transaction(async (manager) => {
@@ -480,19 +466,6 @@ export class ReportsService {
       report.status = ReportStatus.DRAFT;
     }
 
-    // if (dto.general_details.length !== dto.general_statistic.total_accidents) {
-    //   throw Response.errorBad(
-    //     `Số vụ chi tiết TNLĐ (${dto.general_details.length}) phải bằng tổng số vụ (${dto.general_statistic.total_accidents})`,
-    //   );
-    // }
-    // if (
-    //   dto.subsidized_details.length !== dto.subsidized_statistic.total_accidents
-    // ) {
-    //   throw Response.errorBad(
-    //     `Số vụ chi tiết TNĐHTC (${dto.subsidized_details.length}) phải bằng tổng số vụ (${dto.subsidized_statistic.total_accidents})`,
-    //   );
-    // }
-
     return this.dataSource.transaction(async (manager) => {
       // Cập nhật thông tin doanh nghiệp snapshot
       await manager.update(Report, report.id, {
@@ -503,13 +476,6 @@ export class ReportsService {
           status: ReportStatus.DRAFT,
         }),
       });
-      // report.totalEmployees = dto.company_info.total_employees;
-      // report.totalFemaleEmployees = dto.company_info.total_female_employees;
-      // report.totalSalaryFund = dto.company_info.total_salary_fund;
-      // await manager.save(report);
-
-      // Xóa toàn bộ statistic + detail cũ rồi tạo lại
-      // (đơn giản hơn update từng dòng vì số lượng detail có thể thay đổi)
       const oldStatistics = await manager.find(ReportStatistic, {
         where: { reportId: report.id },
       });
@@ -622,14 +588,6 @@ export class ReportsService {
       throw Response.errorBad(
         `[${label}] Số người bị thương nặng không quản lý không được lớn hơn tổng số người bị thương nặng`,
       );
-    // if (dto.total_fatal_accidents > dto.total_accidents)
-    //   throw Response.errorBad(
-    //     `[${label}] Số vụ có người chết không được lớn hơn tổng số vụ`,
-    //   );
-    // if (dto.total_accidents_with_two_or_more_victims > dto.total_accidents)
-    //   throw Response.errorBad(
-    //     `[${label}] Số vụ có 2 người bị nạn trở lên không được lớn hơn tổng số vụ`,
-    //   );
   }
 
   // Map DTO -> ReportStatistic entity
@@ -767,7 +725,6 @@ export class ReportsService {
     const report = await this.reportRepo.findOne({
       where: { id: reportId },
       relations: {
-        // company: true,
         company: {
           businessType: true,
           businessIndustry: true,
@@ -933,7 +890,7 @@ export class ReportsService {
     //   throw Response.errorBad('Vui lòng chọn kỳ báo cáo');
     // }
 
-    // ─── PHẦN I: Tổng hợp theo loại hình cơ sở ───────────────────────────
+    // PHẦN I: Tổng hợp theo loại hình cơ sở
     const sectionOneQb = this.reportRepo
       .createQueryBuilder('r')
       .innerJoin('r.company', 'c')
@@ -1096,7 +1053,7 @@ export class ReportsService {
           ) / 100
         : 0;
 
-    // ─── PHẦN II: Hàm helper tổng hợp theo danh mục ─────────────────────
+    // PHẦN II: Hàm helper tổng hợp theo danh mục
     const buildSectionTwoByField = async (
       groupField: 'accidentCauseId' | 'injuryFactorId' | 'professionId',
       joinTable: string,
@@ -1107,17 +1064,6 @@ export class ReportsService {
         accidentCauseId: 'accident_cause_id',
         injuryFactorId: 'injury_factor_id',
       };
-      // const raw = await this.reportAccidentDetailRepo
-      //   .createQueryBuilder('d')
-      //   .innerJoin('d.reportStatistic', 'rs')
-      //   .innerJoin('rs.report', 'r')
-      //   .leftJoin(`d.${joinAlias}`, 'cat')
-      //   .where('r.reportPeriodId = :reportPeriodId', { reportPeriodId })
-      //   .andWhere('r.status IN (:...statuses)', {
-      //     statuses: ['SUBMITTED', 'APPROVED'],
-      //   })
-      //   .andWhere(`d."${columnMap[groupField]}" IS NOT NULL`)
-      //   .andWhere('cat.status = true')
       const qb = this.reportAccidentDetailRepo
         .createQueryBuilder('d')
         .innerJoin('d.reportStatistic', 'rs')

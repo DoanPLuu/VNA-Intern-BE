@@ -82,7 +82,7 @@ export class CreateReportPeriodDto {
   @IsDate({
     message: 'Ngày hạn chót không đúng định dạng ngày hợp lệ (VD: dd/MM/yyyy)',
   })
-  dueDate: Date; // Đã loại bỏ decorator @IsNotFutureDate() bị sai logic
+  dueDate: Date;
 
   @ApiProperty({
     example: 'OPEN',

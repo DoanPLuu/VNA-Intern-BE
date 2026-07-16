@@ -15,7 +15,7 @@ import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 
 @Controller('upload')
 export class UploadController {
-  // ── Upload file ──────────────────────────────────────────────
+  // Upload file
   @Post()
   @ApiOperation({ summary: 'Upload file (PDF, word, ảnh)' })
   @ApiConsumes('multipart/form-data')
@@ -81,7 +81,7 @@ export class UploadController {
     };
   }
 
-  // ── Xóa file ────────────────────────────────────────────────
+  // Xóa file
   @Delete(':filename')
   @ApiOperation({ summary: 'Xóa file đã upload' })
   deleteFile(@Param('filename') filename: string) {

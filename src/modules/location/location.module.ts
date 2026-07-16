@@ -9,6 +9,6 @@ import { Ward } from './entities/ward.entity';
   imports: [TypeOrmModule.forFeature([Province, Ward])],
   controllers: [LocationController],
   providers: [LocationService],
-  exports: [LocationService], // export để các module khác dùng được
+  exports: [LocationService],
 })
 export class LocationModule {}

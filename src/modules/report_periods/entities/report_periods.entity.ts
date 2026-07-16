@@ -81,7 +81,6 @@ export class ReportPeriod {
   })
   updatedAt: Date;
 
-  //   Thiết lập mối quan hệ: Một kỳ báo cáo có nhiều báo cáo
   @OneToMany(() => Report, (report) => report.reportPeriod)
   reports: Report[];
 }
